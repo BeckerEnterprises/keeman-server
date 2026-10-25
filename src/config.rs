@@ -140,6 +140,11 @@ pub struct LimitsSection {
     pub attachment_max_bytes: u64,
     pub user_quota_bytes: u64,
     pub tombstone_retention_days: u32,
+    /// Bodies of large requests in memory at once (`batch`, rotation
+    /// uploads and commit, attachment parts).
+    pub large_body_budget_bytes: u64,
+    /// Large requests of one account at once.
+    pub large_requests_per_account: u32,
 }
 
 impl Default for LimitsSection {
@@ -148,6 +153,8 @@ impl Default for LimitsSection {
             attachment_max_bytes: 52_428_800,
             user_quota_bytes: 2_147_483_648,
             tombstone_retention_days: 180,
+            large_body_budget_bytes: 134_217_728,
+            large_requests_per_account: 4,
         }
     }
 }
@@ -178,6 +185,9 @@ pub struct RateLimitsSection {
     pub refresh_per_ip_per_min: u32,
     pub events_per_ip_per_min: u32,
     pub session_per_min: u32,
+    /// All sessions of an account together; the same exceptions as
+    /// `session_per_min`.
+    pub account_per_min: u32,
     pub lookup_per_account_per_hour: u32,
     pub favicon_per_account_per_min: u32,
 }
@@ -194,6 +204,7 @@ impl Default for RateLimitsSection {
             refresh_per_ip_per_min: 60,
             events_per_ip_per_min: 60,
             session_per_min: 600,
+            account_per_min: 1200,
             lookup_per_account_per_hour: 30,
             favicon_per_account_per_min: 30,
         }
@@ -315,12 +326,19 @@ impl Config {
             r.refresh_per_ip_per_min,
             r.events_per_ip_per_min,
             r.session_per_min,
+            r.account_per_min,
             r.lookup_per_account_per_hour,
             r.favicon_per_account_per_min,
         ]
         .contains(&0)
         {
             return err("rate_limits must all be positive");
+        }
+        if self.limits.large_body_budget_bytes < crate::extract::LARGE_BODY_LIMIT as u64 {
+            return err("limits.large_body_budget_bytes must be at least 16 MiB");
+        }
+        if self.limits.large_requests_per_account == 0 {
+            return err("limits.large_requests_per_account must be positive");
         }
         Ok(())
     }

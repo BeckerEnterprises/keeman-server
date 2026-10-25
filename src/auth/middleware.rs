@@ -76,9 +76,21 @@ async fn prepare(app: &App, request: &mut Request) -> ApiResult<()> {
         path.as_str(),
         "/v1/me/reauth" | "/v1/users/lookup" | "/v1/favicon"
     ) {
-        let quota = Quota::per_minute(app.config.rate_limits.session_per_min);
+        // Per session and per account at once: new sessions do not raise the limit.
+        let limits = &app.config.rate_limits;
         app.limiter
-            .check(Bucket::Session, &session.session_id, quota)
+            .check_all(&[
+                (
+                    Bucket::Session,
+                    &session.session_id,
+                    Quota::per_minute(limits.session_per_min),
+                ),
+                (
+                    Bucket::Account,
+                    &session.user_id,
+                    Quota::per_minute(limits.account_per_min),
+                ),
+            ])
             .map_err(|seconds| ApiError::new(ErrorCode::RateLimited).retry_after(seconds))?;
     }
     request.extensions_mut().insert(session);

@@ -64,8 +64,10 @@ rp_origins = ["{origin}"]
 
 [limits]
 attachment_max_bytes = 52428800
-user_quota_bytes = 2147483648
+user_quota_bytes = 2147483648             # per vault owner: objects, attachments, open rotations
 tombstone_retention_days = 180
+large_body_budget_bytes = 134217728       # bodies of large requests in memory at once
+large_requests_per_account = 4
 
 [features]
 favicon = true
@@ -80,8 +82,9 @@ register_per_ip_per_hour = 5
 refresh_per_ip_per_min = 60
 events_per_ip_per_min = 60
 session_per_min = 600
-lookup_per_account_per_hour = 30       # users/lookup, not counted against session_per_min
-favicon_per_account_per_min = 30       # favicon, not counted against session_per_min
+account_per_min = 1200                 # all sessions of an account together
+lookup_per_account_per_hour = 30       # users/lookup, not counted against the session and account limits
+favicon_per_account_per_min = 30       # favicon, not counted against the session and account limits
 
 [logging]
 level = "info"

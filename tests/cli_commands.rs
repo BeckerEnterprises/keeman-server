@@ -221,6 +221,33 @@ fn refuses_to_start_with_unsafe_configuration() {
             "rp_id",
         ),
         (
+            "account limit zero",
+            Box::new(|d: &Path| replace(d, "account_per_min = 1200", "account_per_min = 0")),
+            "rate_limits must all be positive",
+        ),
+        (
+            "large-body budget below the largest body",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "large_body_budget_bytes = 134217728",
+                    "large_body_budget_bytes = 1048576",
+                )
+            }),
+            "large_body_budget_bytes",
+        ),
+        (
+            "no large requests per account",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "large_requests_per_account = 4",
+                    "large_requests_per_account = 0",
+                )
+            }),
+            "large_requests_per_account",
+        ),
+        (
             "token lifetime",
             Box::new(|d: &Path| {
                 replace(

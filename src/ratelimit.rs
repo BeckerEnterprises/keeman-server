@@ -20,6 +20,8 @@ pub enum Bucket {
     Refresh,
     Events,
     Session,
+    /// All sessions of an account together.
+    Account,
     Lookup,
     Favicon,
 }
@@ -66,27 +68,40 @@ impl RateLimiter {
 
     /// Takes one token, or returns the seconds until the next one (`Retry-After`).
     pub fn check(&self, bucket: Bucket, key: &str, quota: Quota) -> Result<(), u64> {
-        let period = i64::try_from(quota.period.whole_microseconds()).unwrap_or(i64::MAX);
-        let interval = period / i64::from(quota.burst.max(1));
-        let tolerance = period - interval;
+        self.check_all(&[(bucket, key, quota)])
+    }
+
+    /// Takes one token from every bucket, or none at all if any of them is
+    /// empty; the error is the longest wait.
+    pub fn check_all(&self, buckets: &[(Bucket, &str, Quota)]) -> Result<(), u64> {
         let now = self.now_us();
         let mut state = self
             .state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let tat = state
-            .get(&(bucket, key.to_string()))
-            .copied()
-            .unwrap_or(now)
-            .max(now);
-        if tat - now > tolerance {
-            let wait_us = tat - now - tolerance;
+        let mut next = Vec::with_capacity(buckets.len());
+        let mut wait_us = 0;
+        for &(bucket, key, quota) in buckets {
+            let period = i64::try_from(quota.period.whole_microseconds()).unwrap_or(i64::MAX);
+            let interval = period / i64::from(quota.burst.max(1));
+            let tolerance = period - interval;
+            let tat = state
+                .get(&(bucket, key.to_string()))
+                .copied()
+                .unwrap_or(now)
+                .max(now);
+            if tat - now > tolerance {
+                wait_us = wait_us.max(tat - now - tolerance);
+            }
+            next.push(((bucket, key.to_string()), tat + interval));
+        }
+        if wait_us > 0 {
             return Err(u64::try_from(wait_us)
                 .unwrap_or(0)
                 .div_ceil(1_000_000)
                 .max(1));
         }
-        state.insert((bucket, key.to_string()), tat + interval);
+        state.extend(next);
         Ok(())
     }
 
@@ -117,6 +132,29 @@ mod tests {
     use crate::clock::MockClock;
     use std::sync::Arc;
     use time::macros::datetime;
+
+    #[test]
+    fn check_all_takes_tokens_only_if_every_bucket_allows() {
+        let clock = Arc::new(MockClock::new(datetime!(2026-10-23 08:00 UTC)));
+        let limiter = RateLimiter::new(clock);
+        let session = Quota::per_minute(10);
+        let account = Quota::per_minute(1);
+        let first = [
+            (Bucket::Session, "s1", session),
+            (Bucket::Account, "alice", account),
+        ];
+        assert_eq!(limiter.check_all(&first), Ok(()));
+        // The account is empty: the second session's bucket stays untouched.
+        let second = [
+            (Bucket::Session, "s2", session),
+            (Bucket::Account, "alice", account),
+        ];
+        assert!(limiter.check_all(&second).is_err());
+        for _ in 0..10 {
+            assert_eq!(limiter.check(Bucket::Session, "s2", session), Ok(()));
+        }
+        assert!(limiter.check(Bucket::Session, "s2", session).is_err());
+    }
 
     #[test]
     fn allows_a_burst_then_refills_evenly() {
