@@ -136,6 +136,16 @@ pub async fn create(
     {
         return Err(ApiError::new(ErrorCode::Conflict));
     }
+    // Files of an earlier attachment with this ID are still being deleted
+    // after its row went; a new upload must not meet that deletion.
+    if app
+        .storage
+        .has_files(&body.attachment_id.0)
+        .await
+        .map_err(ApiError::internal)?
+    {
+        return Err(ApiError::new(ErrorCode::Conflict));
+    }
     check_quota(&app, &mut tx, vault_id, user_id, body.size).await?;
     db::attachments::insert(
         &mut tx,
@@ -192,15 +202,13 @@ pub async fn put_part(
         .map_err(ApiError::internal)?;
     // Reading the body takes time: what counts is the membership when the
     // part is put in place, under the write lock that removals take too.
+    // On any early return, dropping `temp` deletes the staged part.
     let mut tx = app.db.begin().await?;
-    if let Err(error) = still_uploading(&mut tx, vault_id, &session.user_id, id).await {
-        app.storage.discard(&temp).await;
-        return Err(error);
-    }
-    if let Err(error) = app.storage.place_part(&temp, id, part).await {
-        app.storage.discard(&temp).await;
-        return Err(ApiError::internal(error));
-    }
+    still_uploading(&mut tx, vault_id, &session.user_id, id).await?;
+    app.storage
+        .place_part(temp, id, part)
+        .await
+        .map_err(ApiError::internal)?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -229,6 +237,16 @@ pub async fn complete(
     let id = attachment_id(&attachment)?;
     let mut conn = app.db.read.acquire().await?;
     require(&mut conn, vault_id, &session.user_id, Need::Member).await?;
+    if in_vault(&mut conn, id, vault_id).await?.complete() {
+        return Ok(StatusCode::NO_CONTENT);
+    }
+    drop(conn);
+    // Assembling copies the whole blob: one of the account's slots for
+    // large requests, and one completion per attachment at a time. Who
+    // waited reads the state again and finds it complete.
+    let _slot = app.large_bodies.admit_slot(&session.user_id)?;
+    let _completing = app.completions.lock(id).await;
+    let mut conn = app.db.read.acquire().await?;
     let attachment = in_vault(&mut conn, id, vault_id).await?;
     drop(conn);
     if attachment.complete() {
@@ -245,7 +263,8 @@ pub async fn complete(
             return Err(ApiError::new(ErrorCode::AttachmentIncomplete));
         }
     }
-    // Assembled without holding the write lock; published inside it.
+    // Assembled without holding the write lock; published inside it. On any
+    // early return, dropping `temp` deletes the copy.
     let temp = app
         .storage
         .assemble(id, parts)
@@ -254,25 +273,18 @@ pub async fn complete(
     let now = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
     // The membership may have ended while the parts were assembled.
-    if let Err(error) = require(&mut tx, vault_id, &session.user_id, Need::Member).await {
-        app.storage.discard(&temp).await;
-        return Err(error);
-    }
+    require(&mut tx, vault_id, &session.user_id, Need::Member).await?;
     let current = db::attachments::get(&mut tx, id)
         .await?
-        .filter(|a| a.vault_id == vault_id);
-    let Some(current) = current else {
-        app.storage.discard(&temp).await;
-        return Err(ApiError::new(ErrorCode::NotFound));
-    };
+        .filter(|a| a.vault_id == vault_id)
+        .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;
     if current.complete() {
-        app.storage.discard(&temp).await;
         return Ok(StatusCode::NO_CONTENT);
     }
-    if let Err(error) = app.storage.publish(&temp, id).await {
-        app.storage.discard(&temp).await;
-        return Err(ApiError::internal(error));
-    }
+    app.storage
+        .publish(temp, id)
+        .await
+        .map_err(ApiError::internal)?;
     db::attachments::complete(&mut tx, id, &now).await?;
     tx.commit().await?;
     if let Err(error) = app.storage.remove_upload(id).await {

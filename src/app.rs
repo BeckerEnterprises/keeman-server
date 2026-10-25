@@ -37,7 +37,7 @@ use crate::error::{ApiError, ApiResult, ErrorCode, ProblemData, StoredProblem};
 use crate::events::Hub;
 use crate::events::socket::{self, Timings};
 use crate::favicon::Favicons;
-use crate::inflight::LargeBodies;
+use crate::inflight::{Completions, LargeBodies};
 use crate::ratelimit::{Bucket, Quota, RateLimiter};
 use crate::storage::attachments::Storage;
 
@@ -52,6 +52,8 @@ pub struct App {
     pub limiter: RateLimiter,
     /// Budget and per-account cap for large request bodies.
     pub large_bodies: LargeBodies,
+    /// One completion per attachment at a time.
+    pub completions: Completions,
     pub trusted_proxies: Vec<IpNet>,
     pub client_ip_header: HeaderName,
     pub hub: Hub,
@@ -113,6 +115,7 @@ impl App {
                 config.limits.large_body_budget_bytes,
                 config.limits.large_requests_per_account,
             ),
+            completions: Completions::default(),
             config,
             db,
             clock,

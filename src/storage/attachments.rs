@@ -31,6 +31,41 @@ fn temporary(dir: &Path, name: &str) -> PathBuf {
     dir.join(format!(".{name}.{}.tmp", uuid::Uuid::now_v7()))
 }
 
+/// A temporary file that is deleted when dropped, unless it was moved to
+/// its place: a request that ends early, also by a timeout or a client
+/// that goes away, leaves nothing behind.
+pub struct TempFile {
+    path: Option<PathBuf>,
+}
+
+impl TempFile {
+    fn new(path: PathBuf) -> Self {
+        Self { path: Some(path) }
+    }
+
+    pub fn path(&self) -> &Path {
+        self.path.as_deref().unwrap_or(Path::new(""))
+    }
+
+    /// Moves the file to `target`; from then on it is no longer temporary.
+    async fn rename_to(mut self, target: &Path) -> io::Result<()> {
+        if let Some(path) = self.path.as_deref() {
+            fs::rename(path, target).await?;
+        }
+        self.path = None;
+        Ok(())
+    }
+}
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        // Drop cannot wait; removing one file is a short system call.
+        if let Some(path) = self.path.take() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
 async fn private_dir(path: &Path) -> io::Result<()> {
     DirBuilder::new()
         .recursive(true)
@@ -111,31 +146,23 @@ impl Storage {
         self.upload_dir(id).join(format!("{part}.part"))
     }
 
-    /// Stores a part; a part uploaded again replaces the old one atomically.
     /// Writes a part into a temporary file beside its place; `place_part`
     /// moves it there once the upload may still take it.
-    pub async fn stage_part(&self, id: &str, part: u64, bytes: &[u8]) -> io::Result<PathBuf> {
+    pub async fn stage_part(&self, id: &str, part: u64, bytes: &[u8]) -> io::Result<TempFile> {
         let dir = self.upload_dir(id);
         private_dir(&dir).await?;
         let temp = temporary(&dir, &format!("{part}.part"));
         let mut file = private_file(&temp).await?;
-        let written = async {
-            file.write_all(bytes).await?;
-            file.flush().await
-        }
-        .await;
-        drop(file);
-        if let Err(error) = written {
-            let _ = fs::remove_file(&temp).await;
-            return Err(error);
-        }
+        let temp = TempFile::new(temp);
+        file.write_all(bytes).await?;
+        file.flush().await?;
         Ok(temp)
     }
 
     /// Moves a staged part to its place; an earlier upload of the part is
     /// replaced atomically.
-    pub async fn place_part(&self, temp: &Path, id: &str, part: u64) -> io::Result<()> {
-        fs::rename(temp, self.part_path(id, part)).await
+    pub async fn place_part(&self, temp: TempFile, id: &str, part: u64) -> io::Result<()> {
+        temp.rename_to(&self.part_path(id, part)).await
     }
 
     /// The size of a stored part, `None` if it is missing.
@@ -149,35 +176,33 @@ impl Storage {
 
     /// Joins the parts into a temporary file in the upload directory and
     /// syncs it; [`Storage::publish`] moves it into place.
-    pub async fn assemble(&self, id: &str, parts: u64) -> io::Result<PathBuf> {
+    pub async fn assemble(&self, id: &str, parts: u64) -> io::Result<TempFile> {
         let temp = temporary(&self.upload_dir(id), "blob");
         let mut out = private_file(&temp).await?;
-        let joined = async {
-            for part in 0..parts {
-                let mut input = File::open(self.part_path(id, part)).await?;
-                tokio::io::copy(&mut input, &mut out).await?;
-            }
-            out.sync_all().await
+        let temp = TempFile::new(temp);
+        for part in 0..parts {
+            let mut input = File::open(self.part_path(id, part)).await?;
+            tokio::io::copy(&mut input, &mut out).await?;
         }
-        .await;
-        drop(out);
-        if let Err(error) = joined {
-            let _ = fs::remove_file(&temp).await;
-            return Err(error);
-        }
+        out.sync_all().await?;
         Ok(temp)
     }
 
     /// Moves an assembled blob to its final path and syncs the directory.
-    pub async fn publish(&self, temp: &Path, id: &str) -> io::Result<()> {
+    pub async fn publish(&self, temp: TempFile, id: &str) -> io::Result<()> {
         let dir = self.blob_dir(id);
         private_dir(&dir).await?;
-        fs::rename(temp, self.blob_path(id)).await?;
+        temp.rename_to(&self.blob_path(id)).await?;
         File::open(&dir).await?.sync_all().await
     }
 
-    pub async fn discard(&self, temp: &Path) {
-        let _ = fs::remove_file(temp).await;
+    /// Whether files of this attachment exist (blob or upload), e.g. while
+    /// the deletion of an earlier attachment with this ID is still running.
+    pub async fn has_files(&self, id: &str) -> io::Result<bool> {
+        Ok(
+            fs::try_exists(self.blob_path(id)).await?
+                || fs::try_exists(self.upload_dir(id)).await?,
+        )
     }
 
     /// The blob and its length.
@@ -240,4 +265,34 @@ pub async fn body(mut file: File, start: u64, len: u64) -> io::Result<Body> {
         Ok(Some((Bytes::from(chunk), (file, rest))))
     });
     Ok(Body::from_stream(stream))
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_temporary_file_goes_unless_it_was_moved() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path());
+        let id = uuid::Uuid::now_v7().to_string();
+        // Dropped, e.g. because the request ended early.
+        let staged = storage.stage_part(&id, 0, b"part").await.unwrap();
+        let path = staged.path().to_path_buf();
+        assert!(path.exists());
+        drop(staged);
+        assert!(!path.exists());
+        // Moved to its place: it stays there.
+        let staged = storage.stage_part(&id, 0, b"part").await.unwrap();
+        let path = staged.path().to_path_buf();
+        storage.place_part(staged, &id, 0).await.unwrap();
+        assert!(!path.exists());
+        assert_eq!(storage.part_len(&id, 0).await.unwrap(), Some(4));
+        let blob = storage.assemble(&id, 1).await.unwrap();
+        let path = blob.path().to_path_buf();
+        drop(blob);
+        assert!(!path.exists());
+        assert!(!storage.blob_path(&id).exists());
+    }
 }

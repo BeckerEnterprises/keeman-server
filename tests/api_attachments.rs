@@ -605,3 +605,128 @@ async fn cleanup_removes_abandoned_uploads_and_reports_orphans() {
     );
     assert!(t.blob_path(&stray).exists());
 }
+
+/// An attachment with all parts uploaded, not yet complete.
+async fn uploaded(t: &TestApp, account: &Account, vault: &str, data: &[u8]) -> String {
+    let id = new_uuid();
+    let created = t.create_attachment(account, vault, &id, data.len()).await;
+    assert_eq!(created.status, StatusCode::CREATED);
+    for (part, chunk) in data.chunks(PART).enumerate() {
+        let put = t.put_part(account, vault, &id, part, chunk).await;
+        assert_eq!(put.status, StatusCode::NO_CONTENT);
+    }
+    id
+}
+
+fn temporary_files(t: &TestApp, id: &str) -> usize {
+    std::fs::read_dir(t.data_path(&format!("uploads/{id}"))).map_or(0, |entries| {
+        entries
+            .filter(|entry| {
+                entry
+                    .as_ref()
+                    .is_ok_and(|e| e.file_name().to_string_lossy().ends_with(".tmp"))
+            })
+            .count()
+    })
+}
+
+#[tokio::test]
+async fn completions_of_one_attachment_assemble_once() {
+    let (t, alice, vault) = setup().await;
+    let data = blob(1000);
+    let id = uploaded(&t, &alice, &vault, &data).await;
+    let complete = || {
+        Req::post(&format!("{}/complete", base(&vault, &id)))
+            .token(&alice.access_token)
+            .build()
+    };
+    let tx = t.app.db.begin().await.unwrap();
+    let first = t.spawn(complete());
+    t.writers_waiting(1).await;
+    let second = t.spawn(complete());
+    for _ in 0..200 {
+        if t.app.large_bodies.in_flight(&alice.user_id) == 2 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    assert_eq!(t.app.large_bodies.in_flight(&alice.user_id), 2);
+    // The second waits for the first instead of assembling its own copy.
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert_eq!(t.app.db.writers_waiting(), 1);
+    assert_eq!(temporary_files(&t, &id), 1);
+    tx.commit().await.unwrap();
+    assert_eq!(first.await.unwrap().status, StatusCode::NO_CONTENT);
+    assert_eq!(second.await.unwrap().status, StatusCode::NO_CONTENT);
+    assert!(t.app.completions.is_empty());
+    assert_eq!(t.app.large_bodies.in_flight(&alice.user_id), 0);
+    assert_eq!(t.download(&alice, &vault, &id, None).await.body, data);
+}
+
+#[tokio::test]
+async fn a_member_who_leaves_while_the_parts_are_assembled_completes_nothing() {
+    let (t, alice, vault) = setup().await;
+    let bob = t.register("bob@example.com").await;
+    t.share(&alice, &vault, &bob).await;
+    let id = uploaded(&t, &bob, &vault, &blob(1000)).await;
+    let mut tx = t.app.db.begin().await.unwrap();
+    let pending = t.spawn(
+        Req::post(&format!("{}/complete", base(&vault, &id)))
+            .token(&bob.access_token)
+            .build(),
+    );
+    t.writers_waiting(1).await;
+    support::sql_in(
+        &mut tx,
+        &format!(
+            "DELETE FROM memberships WHERE vault_id = '{vault}' AND user_id = '{}'",
+            bob.user_id
+        ),
+    )
+    .await;
+    tx.commit().await.unwrap();
+    assert_eq!(pending.await.unwrap().status, StatusCode::NOT_FOUND);
+    assert_eq!(temporary_files(&t, &id), 0, "the assembled copy is gone");
+    assert!(
+        !t.data_path(&format!("attachments/{}/{id}.bin", &id[..2]))
+            .exists()
+    );
+    assert_eq!(
+        t.download(&alice, &vault, &id, None).await.status,
+        StatusCode::NOT_FOUND
+    );
+}
+
+#[tokio::test]
+async fn a_completion_takes_a_slot_for_large_requests() {
+    let (t, alice, vault) = setup().await;
+    let id = uploaded(&t, &alice, &vault, &blob(100)).await;
+    let slots: Vec<_> = (0..4)
+        .map(|_| t.app.large_bodies.admit_slot(&alice.user_id).unwrap())
+        .collect();
+    let response = t.complete(&alice, &vault, &id).await;
+    assert_eq!(response.code(), "rate_limited");
+    assert_eq!(response.header("retry-after").as_deref(), Some("1"));
+    drop(slots);
+    assert_eq!(
+        t.complete(&alice, &vault, &id).await.status,
+        StatusCode::NO_CONTENT
+    );
+}
+
+#[tokio::test]
+async fn an_id_whose_files_are_still_being_deleted_is_refused() {
+    let (t, alice, vault) = setup().await;
+    for leftover in ["uploads/{id}", "attachments/{prefix}/{id}.bin"] {
+        let id = new_uuid();
+        let path = t.data_path(&leftover.replace("{prefix}", &id[..2]).replace("{id}", &id));
+        if leftover.starts_with("uploads") {
+            std::fs::create_dir_all(&path).unwrap();
+        } else {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, b"old").unwrap();
+        }
+        let response = t.create_attachment(&alice, &vault, &id, 100).await;
+        assert_eq!(response.code(), "conflict", "{leftover}");
+    }
+}
