@@ -55,6 +55,8 @@ uuid = { version = "1.28.0", features = ["v7"] }
 # Passkeys as second factor; links the system OpenSSL. Stored
 # passkeys are serialised library state, so stay on 0.5.x.
 webauthn-rs = { version = "0.5.5", default-features = false, features = ["danger-allow-state-serialisation"] }
+zstd = { version = "0.14.3", default-features = false }
+tar = { version = "0.4.46", default-features = false }
 
 [dev-dependencies]
 futures-util = { version = "0.3.34", default-features = false, features = ["sink"] }

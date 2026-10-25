@@ -1,0 +1,13 @@
+# Reverse proxy of the compose example: TLS for both hosts. The web client
+# container sets its own security headers; the API gets HSTS here.
+app.example.org {
+	reverse_proxy web:8080
+}
+
+api.example.org {
+	request_body {
+		max_size 20MiB
+	}
+	header Strict-Transport-Security "max-age=63072000"
+	reverse_proxy api:8787
+}

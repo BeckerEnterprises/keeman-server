@@ -1,8 +1,12 @@
-//! Command-line interface. Every command except `init` refuses to
-//! run with an invalid configuration.
+//! Command-line interface. Every command except `init` and `restore`
+//! refuses to run with an invalid configuration; `check` reports every
+//! problem instead of stopping at the first.
 
+pub mod backup;
+pub mod check;
 pub mod init;
 pub mod invite;
+pub mod restore;
 pub mod serve;
 pub mod user;
 
@@ -50,6 +54,34 @@ enum Command {
     /// Manage accounts
     #[command(subcommand)]
     User(UserCommand),
+    /// Write a backup of the database and the attachment files
+    Backup {
+        /// Archive to write (.tar.zst); must not exist
+        #[arg(long, conflicts_with = "dir", required_unless_present = "dir")]
+        out: Option<PathBuf>,
+        /// Folder for timestamped backups, pruned afterwards
+        #[arg(long)]
+        dir: Option<PathBuf>,
+        /// Keep the newest backup of this many recent days (with --dir)
+        #[arg(long, default_value_t = 14, requires = "dir")]
+        keep_daily: usize,
+        /// Keep the newest backup of this many recent weeks (with --dir)
+        #[arg(long, default_value_t = 8, requires = "dir")]
+        keep_weekly: usize,
+    },
+    /// Restore a backup into an empty data directory (stop the server first;
+    /// needs no configuration)
+    Restore {
+        /// Archive written by `backup`
+        #[arg(long)]
+        from: PathBuf,
+        /// Data directory to fill; must be empty or missing
+        #[arg(long)]
+        data_dir: PathBuf,
+    },
+    /// Check configuration, permissions, database and attachment files;
+    /// changes nothing
+    Check,
 }
 
 #[derive(Debug, Subcommand)]
@@ -114,9 +146,29 @@ fn execute(cli: Cli) -> CliResult<()> {
         .build()
         .map_err(|e| e.to_string())?;
     runtime.block_on(async move {
+        let now = time::OffsetDateTime::now_utc();
+        match &cli.command {
+            Command::Restore { from, data_dir } => return restore::restore(from, data_dir).await,
+            Command::Check => return check::check(&cli.config, now).await,
+            _ => {}
+        }
         let loaded = load(&cli.config)?;
         match cli.command {
-            Command::Init { .. } => Ok(()),
+            Command::Init { .. } | Command::Restore { .. } | Command::Check => Ok(()),
+            Command::Backup {
+                out,
+                dir,
+                keep_daily,
+                keep_weekly,
+            } => {
+                let target = backup::Target {
+                    out,
+                    dir,
+                    keep_daily,
+                    keep_weekly,
+                };
+                backup::backup(&loaded.config, target, now).await
+            }
             Command::Serve => serve::serve(loaded).await,
             Command::Migrate => {
                 open_db(&loaded.config).await?.close().await;

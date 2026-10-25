@@ -93,8 +93,14 @@ impl Storage {
         self.attachments.join(id.get(..2).unwrap_or("00"))
     }
 
-    fn blob_path(&self, id: &str) -> PathBuf {
+    /// Where the complete blob of an attachment lives.
+    pub fn blob_path(&self, id: &str) -> PathBuf {
         self.blob_dir(id).join(format!("{id}.bin"))
+    }
+
+    /// The folder of uploads in progress.
+    pub fn uploads_dir(&self) -> &Path {
+        &self.uploads
     }
 
     fn upload_dir(&self, id: &str) -> PathBuf {

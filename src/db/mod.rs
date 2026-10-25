@@ -18,6 +18,7 @@ pub mod challenges;
 pub mod cleanup;
 pub mod idempotency;
 pub mod invites;
+pub mod maintenance;
 pub mod objects;
 pub mod passkeys;
 pub mod rotations;
@@ -67,6 +68,26 @@ impl Db {
         let write = SqlitePoolOptions::new()
             .max_connections(1)
             .connect_with(options(path)?)
+            .await?;
+        Ok(Db { read, write })
+    }
+
+    /// Opens an existing database without creating or migrating it, for
+    /// the maintenance commands next to a running server.
+    pub async fn open_existing(path: &Path) -> Result<Db, sqlx::Error> {
+        if !path.is_file() {
+            return Err(sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("no database at {}", path.display()),
+            )));
+        }
+        let read = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect_with(options(path)?.create_if_missing(false))
+            .await?;
+        let write = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options(path)?.create_if_missing(false))
             .await?;
         Ok(Db { read, write })
     }

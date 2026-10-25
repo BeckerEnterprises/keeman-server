@@ -365,6 +365,29 @@ impl Config {
         Ok(())
     }
 
+    /// Like `check_permissions`, but collects every problem of the config
+    /// file, `data_dir` and the secret file instead of stopping at the first.
+    /// The paths below `data_dir` are checked by `check` itself.
+    pub fn permission_problems(&self, config_path: &Path) -> Vec<String> {
+        let mut problems = Vec::new();
+        let mut collect = |result: Result<(), ConfigError>| {
+            if let Err(error) = result {
+                problems.push(error.0);
+            }
+        };
+        collect(private(config_path, "config file"));
+        let data = &self.storage.data_dir;
+        if data.is_dir() {
+            collect(private(data, "data_dir"));
+        } else {
+            collect(err(format!("data_dir {} does not exist", data.display())));
+        }
+        if let Some(file) = &self.security.server_secret_file {
+            collect(private(file, "server_secret_file"));
+        }
+        problems
+    }
+
     /// The server secret from file or environment, never both.
     pub fn load_secret(&self, env: &[(String, String)]) -> Result<ServerSecret, ConfigError> {
         let from_env = env

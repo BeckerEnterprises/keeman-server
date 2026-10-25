@@ -1,0 +1,31 @@
+# Daily backup of the KeeMan API server into /var/backups/keeman, started by
+# keeman-backup.timer; keeps the newest backup of 14 days and 8 weeks.
+# Install (see README, "Backup"):
+#   sudo install -d -o keeman-api -g keeman-api -m 0700 /var/backups/keeman
+#   sudo install -m 0644 deploy/keeman-backup.service deploy/keeman-backup.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now keeman-backup.timer
+[Unit]
+Description=KeeMan backup
+After=keeman-api.service
+
+[Service]
+Type=oneshot
+User=keeman-api
+Group=keeman-api
+ExecStart=/opt/keeman/keeman-server backup --config /etc/keeman/config.toml --dir /var/backups/keeman
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/keeman /var/backups/keeman
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=

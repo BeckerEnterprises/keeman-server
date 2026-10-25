@@ -1,0 +1,9 @@
+# Only what the build needs; the image is built with the toolchain of the
+# base image, which matches rust-toolchain.toml.
+*
+!Cargo.toml
+!Cargo.lock
+!.cargo
+!.sqlx
+!migrations
+!src

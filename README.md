@@ -52,7 +52,7 @@ The web client and the API must be on the same site (for example `app.example.or
 
 ## Commands
 
-All commands take `--config <path>` (default `./config.toml`) and refuse to run if the configuration, the file permissions or the server secret are not safe.
+All commands take `--config <path>` (default `./config.toml`) and refuse to run if the configuration, the file permissions or the server secret are not safe; `restore` needs no configuration, and `check` reports every problem instead of stopping at the first.
 
 | Command | Purpose |
 |---|---|
@@ -63,6 +63,10 @@ All commands take `--config <path>` (default `./config.toml`) and refuse to run 
 | `invite list` / `invite revoke <id>` | List invites (never the codes) / delete an unused one |
 | `user list` / `user disable <email>` / `user enable <email>` | List accounts / disable an account and revoke its sessions / enable it again |
 | `user reset-2fa <email>` | Emergency: remove TOTP, passkeys and backup codes of an account; its sessions stay |
+| `backup --out <file.tar.zst>` | Write a backup of the database and the attachment files, also while the server runs |
+| `backup --dir <folder> [--keep-daily 14] [--keep-weekly 8]` | The same as `keeman-<YYYYMMDD-HHMMSS>.tar.zst` in a folder, then delete older backups there |
+| `restore --from <file.tar.zst> --data-dir <folder>` | Restore a backup into an empty data directory (server stopped) |
+| `check` | Check configuration, permissions, database integrity and attachment files; changes nothing, exit code 1 on problems |
 
 ## Installation
 
@@ -106,13 +110,56 @@ api.example.org {
 
 If the proxy is not on the same host or adds its own client IP header, set `server.trusted_proxies` and `server.client_ip_header`; otherwise rate limits count the proxy's address.
 
-Back up `server_secret` and `config.toml` separately from the data. Without the secret, the TOTP second factor of every account stops working.
-
 CLI commands run as the service user:
 
 ```bash
 sudo -u keeman-api /opt/keeman/keeman-server invite create --config /etc/keeman/config.toml
 ```
+
+## Backup and restore
+
+A backup is one `.tar.zst` archive (mode 0600) with a consistent snapshot of the database, every complete attachment file and a `manifest.json` with the size and SHA-256 of each file. It never contains `server_secret` or `config.toml`: back those up separately, encrypted, for example with `age -p`, and keep them away from the server. Without the secret, the TOTP second factor of every account stops working. Backups hold no plaintext, but they do hold the hashes and wrapped keys an attacker would need for guessing master passwords offline, so treat them as confidential.
+
+Daily backups with systemd, keeping the newest of 14 days and 8 weeks:
+
+```bash
+install -d -o keeman-api -g keeman-api -m 0700 /var/backups/keeman
+install -m 0644 deploy/keeman-backup.service deploy/keeman-backup.timer /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now keeman-backup.timer
+systemctl start keeman-backup.service          # a first backup right away
+```
+
+Copy the backups to another place as well. Do this from an account other than `keeman-api`, with its own key, and do not mirror deletions blindly (no `rsync --delete`): otherwise whoever compromises the API could wipe the copies by deleting the local files. For example, as root from a timer of its own:
+
+```bash
+rsync -a /var/backups/keeman/ backup@backup.example.org:keeman/
+```
+
+Restore, for example after moving to a new server:
+
+```bash
+systemctl stop keeman-api
+sudo -u keeman-api /opt/keeman/keeman-server restore --from keeman-20261025-030000.tar.zst --data-dir /var/lib/keeman
+# restore server_secret and config.toml from their own backup, then:
+sudo -u keeman-api /opt/keeman/keeman-server check --config /etc/keeman/config.toml
+systemctl start keeman-api
+```
+
+`restore` only fills an empty data directory (or one with the empty `attachments/` and `uploads/` that `init` leaves). It checks every file against the manifest before anything is put in place, and refuses archives with other entries. Try a restore now and then in a fresh environment, for example in a container, and run `check` afterwards.
+
+## Containers
+
+`Dockerfile` builds an image of the server (non-root user `keeman`, volumes `/etc/keeman`, `/var/lib/keeman` and `/var/backups/keeman`); the web client repository has one for the web client. `deploy/compose/` combines both with Caddy, which gets TLS certificates for the two hosts:
+
+```bash
+podman build -t keeman-server .                # here; the web client image in its repository
+cd deploy/compose                              # replace the example hosts in compose.yaml and Caddyfile
+podman compose run --rm api init --config /etc/keeman/config.toml --data-dir /var/lib/keeman
+podman compose up -d
+podman compose exec api keeman-server invite create --config /etc/keeman/config.toml
+```
+
+The same works with Docker (`docker build`, `docker compose`). In the compose file, environment variables set the installation-specific keys (`KEEMAN__SERVER__PUBLIC_API_URL` and so on) over the placeholders `init` writes. Backups: `podman compose exec api keeman-server backup --config /etc/keeman/config.toml --dir /var/backups/keeman`, for example from a timer on the host, then copy the `backups` volume elsewhere.
 
 ## Deployment
 
@@ -133,5 +180,7 @@ deploy ALL=(keeman-api) NOPASSWD: /opt/keeman/keeman-server
 ## License
 
 [GNU Affero General Public License v3.0 or later](LICENSE) (`AGPL-3.0-or-later`).
+
+If you run a modified version of the server or the web client for others, the AGPL requires you to offer them the source code of exactly that version. The web client links to the source code (`apps/web/src/build-info.ts` in its repository); point those links to your own repositories.
 
 The KeeMan name and logo are not licensed under the AGPL: as permitted by section 7(e) of the license, no rights to use them are granted. If you distribute or run a modified version for others, give it your own name and logo.

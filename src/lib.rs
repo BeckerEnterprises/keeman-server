@@ -5,6 +5,7 @@ pub mod api;
 pub mod app;
 pub mod audit;
 pub mod auth;
+pub mod backup;
 pub mod cli;
 pub mod client_ip;
 pub mod clock;
