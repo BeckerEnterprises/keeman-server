@@ -7,9 +7,11 @@ use time::Duration;
 use tokio::task::JoinHandle;
 
 use crate::app::App;
+use crate::audit;
 use crate::clock::format_timestamp;
-use crate::db::attachments;
 use crate::db::cleanup::{self, Cutoffs, Removed};
+use crate::db::{attachments, vaults};
+use crate::events;
 
 pub const INTERVAL: std::time::Duration = std::time::Duration::from_secs(600);
 /// Tombstones removed per transaction, so writers never wait long.
@@ -43,6 +45,13 @@ pub async fn cleanup(app: &App) -> Result<Removed, sqlx::Error> {
             break;
         }
     }
+    removed.invitations = expire_invitations(
+        app,
+        &before(Duration::days(i64::from(
+            app.config.limits.invitation_ttl_days,
+        ))),
+    )
+    .await?;
     let mut tx = app.db.begin().await?;
     let stale = attachments::delete_stale_uploads(&mut tx, &before(Duration::hours(24))).await?;
     tx.commit().await?;
@@ -51,6 +60,36 @@ pub async fn cleanup(app: &App) -> Result<Removed, sqlx::Error> {
     check_attachments(app).await?;
     app.limiter.prune();
     Ok(removed)
+}
+
+/// Deletes pending invitations created at or before `before`, logs each and
+/// tells the invitees and the vaults' active members afterwards.
+async fn expire_invitations(app: &App, before: &str) -> Result<u64, sqlx::Error> {
+    let now = format_timestamp(app.now());
+    let mut tx = app.db.begin().await?;
+    let expired = vaults::expire_invitations(&mut tx, before).await?;
+    let mut recipients = BTreeSet::new();
+    for invitation in &expired {
+        audit::vault_event(
+            &mut tx,
+            &now,
+            "invitation_expired",
+            &invitation.user_id,
+            &invitation.vault_id,
+            None,
+        )
+        .await?;
+        recipients.insert(invitation.user_id.clone());
+        recipients.extend(vaults::active_members(&mut tx, &invitation.vault_id).await?);
+    }
+    tx.commit().await?;
+    if !recipients.is_empty() {
+        app.hub.publish(
+            recipients.iter().map(String::as_str),
+            &events::vaults_changed(),
+        );
+    }
+    Ok(expired.len() as u64)
 }
 
 /// How attachment files and rows differ.

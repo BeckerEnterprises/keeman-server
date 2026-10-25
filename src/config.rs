@@ -145,6 +145,8 @@ pub struct LimitsSection {
     pub large_body_budget_bytes: u64,
     /// Large requests of one account at once.
     pub large_requests_per_account: u32,
+    /// Pending invitations are deleted after this many days.
+    pub invitation_ttl_days: u32,
 }
 
 impl Default for LimitsSection {
@@ -155,6 +157,7 @@ impl Default for LimitsSection {
             tombstone_retention_days: 180,
             large_body_budget_bytes: 134_217_728,
             large_requests_per_account: 4,
+            invitation_ttl_days: 30,
         }
     }
 }
@@ -190,6 +193,9 @@ pub struct RateLimitsSection {
     pub account_per_min: u32,
     pub lookup_per_account_per_hour: u32,
     pub favicon_per_account_per_min: u32,
+    /// Invitations, on top of the session and account limits.
+    pub invites_per_account_per_hour: u32,
+    pub invites_per_invitee_per_hour: u32,
 }
 
 impl Default for RateLimitsSection {
@@ -207,6 +213,8 @@ impl Default for RateLimitsSection {
             account_per_min: 1200,
             lookup_per_account_per_hour: 30,
             favicon_per_account_per_min: 30,
+            invites_per_account_per_hour: 30,
+            invites_per_invitee_per_hour: 30,
         }
     }
 }
@@ -329,6 +337,8 @@ impl Config {
             r.account_per_min,
             r.lookup_per_account_per_hour,
             r.favicon_per_account_per_min,
+            r.invites_per_account_per_hour,
+            r.invites_per_invitee_per_hour,
         ]
         .contains(&0)
         {
@@ -339,6 +349,9 @@ impl Config {
         }
         if self.limits.large_requests_per_account == 0 {
             return err("limits.large_requests_per_account must be positive");
+        }
+        if self.limits.invitation_ttl_days == 0 {
+            return err("limits.invitation_ttl_days must be positive");
         }
         Ok(())
     }

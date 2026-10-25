@@ -68,6 +68,7 @@ user_quota_bytes = 2147483648             # per vault owner: objects, attachment
 tombstone_retention_days = 180
 large_body_budget_bytes = 134217728       # bodies of large requests in memory at once
 large_requests_per_account = 4
+invitation_ttl_days = 30                  # pending invitations are deleted after this
 
 [features]
 favicon = true
@@ -85,6 +86,8 @@ session_per_min = 600
 account_per_min = 1200                 # all sessions of an account together
 lookup_per_account_per_hour = 30       # users/lookup, not counted against the session and account limits
 favicon_per_account_per_min = 30       # favicon, not counted against the session and account limits
+invites_per_account_per_hour = 30      # invitations sent, on top of the session and account limits
+invites_per_invitee_per_hour = 30      # invitations received by one account
 
 [logging]
 level = "info"

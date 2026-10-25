@@ -291,6 +291,27 @@ pub struct NewInvitation<'a> {
     pub now: &'a str,
 }
 
+/// A pending invitation that was deleted after its time ran out.
+pub struct ExpiredInvitation {
+    pub vault_id: String,
+    pub user_id: String,
+}
+
+/// Deletes the pending invitations created at or before `before`.
+pub async fn expire_invitations(
+    conn: &mut Conn,
+    before: &str,
+) -> Result<Vec<ExpiredInvitation>, sqlx::Error> {
+    sqlx::query_as!(
+        ExpiredInvitation,
+        "DELETE FROM memberships WHERE state = 'pending' AND created_at <= ?
+         RETURNING vault_id, user_id",
+        before
+    )
+    .fetch_all(&mut *conn)
+    .await
+}
+
 pub async fn insert_invitation(conn: &mut Conn, i: &NewInvitation<'_>) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "INSERT INTO memberships (vault_id, user_id, role, state, key_version, key_box, sender_id, created_at)

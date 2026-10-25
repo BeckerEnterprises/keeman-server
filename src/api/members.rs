@@ -19,6 +19,7 @@ use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
 use crate::extract::StrictJson;
+use crate::ratelimit::{Bucket, Quota};
 use crate::types::{KeyBox, Positive, Role, Uuid, WrappedKey, encode_base64url};
 
 #[derive(Deserialize)]
@@ -89,7 +90,8 @@ pub async fn list(
     Ok(Json(json!({ "members": members })))
 }
 
-/// Owner → `user_not_found` → `already_member` → `key_version_mismatch`.
+/// Owner → invitation limits → `user_not_found` → `already_member` →
+/// `key_version_mismatch`.
 pub async fn invite(
     State(app): State<Arc<App>>,
     session: AuthSession,
@@ -104,6 +106,20 @@ pub async fn invite(
     let now = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
     require(&mut tx, vault_id, user_id, Need::Owner).await?;
+    // Before the lookup, so the limits also bound probing for accounts.
+    let limits = &app.config.rate_limits;
+    app.limit_all(&[
+        (
+            Bucket::InvitesByAccount,
+            user_id,
+            Quota::per_hour(limits.invites_per_account_per_hour),
+        ),
+        (
+            Bucket::InvitesByInvitee,
+            invitee,
+            Quota::per_hour(limits.invites_per_invitee_per_hour),
+        ),
+    ])?;
     if db::users::email_by_id(&mut *tx, invitee).await?.is_none() {
         return Err(ApiError::new(ErrorCode::UserNotFound));
     }

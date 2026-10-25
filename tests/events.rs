@@ -480,3 +480,50 @@ async fn recovery_closes_the_connections_of_all_sessions() {
         assert_eq!(close_code(ws).await, 4401);
     }
 }
+
+#[tokio::test]
+async fn expired_invitations_are_deleted_and_announced() {
+    let (t, addr) = serve("").await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let carol = t.register("carol@example.com").await;
+    let old = t.create_vault(&alice).await;
+    t.invite_member(&alice, &old, &bob).await;
+    t.advance(time::Duration::days(29));
+    let alice = t.login(&alice).await;
+    let young = t.create_vault(&alice).await;
+    t.invite_member(&alice, &young, &carol).await;
+    t.advance(time::Duration::days(1) + time::Duration::minutes(1));
+    let alice = t.login(&alice).await;
+    let bob = t.login(&bob).await;
+    let mut a = ready(addr, &alice).await;
+    let mut b = ready(addr, &bob).await;
+
+    let removed = keeman_server::jobs::cleanup(&t.app).await.unwrap();
+    assert_eq!(removed.invitations, 1);
+    let changed = json!({ "type": "vaults_changed" });
+    assert_eq!(next_text(&mut b).await, changed);
+    assert_eq!(next_text(&mut a).await, changed);
+    assert_eq!(
+        t.count(&format!(
+            "SELECT COUNT(*) FROM memberships WHERE state = 'pending' AND vault_id = '{young}'"
+        ))
+        .await,
+        1
+    );
+    assert_eq!(
+        t.count(&format!(
+            "SELECT COUNT(*) FROM memberships WHERE state = 'pending' AND vault_id = '{old}'"
+        ))
+        .await,
+        0
+    );
+    assert_eq!(
+        t.count(&format!(
+            "SELECT COUNT(*) FROM security_log WHERE event = 'invitation_expired' AND vault_id = '{old}' AND user_id = '{}'",
+            bob.user_id
+        ))
+        .await,
+        1
+    );
+}

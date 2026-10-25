@@ -423,3 +423,55 @@ async fn foreign_and_pending_callers_are_rejected() {
         assert_eq!(response.code(), "not_found", "{path}");
     }
 }
+
+#[tokio::test]
+async fn invitations_are_limited_per_inviter_and_per_invitee() {
+    let t = TestApp::with_config(
+        "[rate_limits]\ninvites_per_account_per_hour = 3\ninvites_per_invitee_per_hour = 2\n",
+    )
+    .await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let carol = t.register("carol@example.com").await;
+    let dave = t.register("dave@example.com").await;
+    let erin = t.register("erin@example.com").await;
+    let vaults = [
+        t.create_vault(&alice).await,
+        t.create_vault(&alice).await,
+        t.create_vault(&alice).await,
+    ];
+    // Bob may receive two invitations an hour, from anyone.
+    for vault in &vaults[..2] {
+        let response = t.invite_member(&alice, vault, &bob).await;
+        assert_eq!(response.status, StatusCode::CREATED);
+    }
+    let response = t.invite_member(&alice, &vaults[2], &bob).await;
+    assert_eq!(response.code(), "rate_limited");
+    assert!(response.header("retry-after").is_some());
+    let erins = t.create_vault(&erin).await;
+    assert_eq!(
+        t.invite_member(&erin, &erins, &bob).await.code(),
+        "rate_limited"
+    );
+    // The refused attempts took nothing from Alice: her third invitation
+    // goes through, the fourth does not, not even to an unknown account.
+    let response = t.invite_member(&alice, &vaults[2], &carol).await;
+    assert_eq!(response.status, StatusCode::CREATED);
+    assert_eq!(
+        t.invite_member(&alice, &vaults[0], &dave).await.code(),
+        "rate_limited"
+    );
+    let unknown = t
+        .call(
+            Req::post(&format!("/v1/vaults/{}/members", vaults[0]))
+                .token(&alice.access_token)
+                .json(&json!({ "user_id": new_uuid(), "key_version": 1, "key_box": key_box(200) })),
+        )
+        .await;
+    assert_eq!(unknown.code(), "rate_limited");
+    // One invitation per 20 minutes comes back.
+    t.advance(time::Duration::minutes(20));
+    let alice = t.login(&alice).await;
+    let response = t.invite_member(&alice, &vaults[0], &dave).await;
+    assert_eq!(response.status, StatusCode::CREATED);
+}

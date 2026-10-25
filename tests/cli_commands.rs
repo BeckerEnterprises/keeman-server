@@ -248,6 +248,33 @@ fn refuses_to_start_with_unsafe_configuration() {
             "large_requests_per_account",
         ),
         (
+            "invitations never expire",
+            Box::new(|d: &Path| replace(d, "invitation_ttl_days = 30", "invitation_ttl_days = 0")),
+            "invitation_ttl_days",
+        ),
+        (
+            "no invitations per account",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "invites_per_account_per_hour = 30",
+                    "invites_per_account_per_hour = 0",
+                )
+            }),
+            "rate_limits must all be positive",
+        ),
+        (
+            "no invitations per invitee",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "invites_per_invitee_per_hour = 30",
+                    "invites_per_invitee_per_hour = 0",
+                )
+            }),
+            "rate_limits must all be positive",
+        ),
+        (
             "token lifetime",
             Box::new(|d: &Path| {
                 replace(

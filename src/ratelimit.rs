@@ -24,6 +24,9 @@ pub enum Bucket {
     Account,
     Lookup,
     Favicon,
+    /// Invitations sent by an account and received by an account.
+    InvitesByAccount,
+    InvitesByInvitee,
 }
 
 #[derive(Debug, Clone, Copy)]

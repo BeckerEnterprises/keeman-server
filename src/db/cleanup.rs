@@ -26,6 +26,8 @@ pub struct Removed {
     pub security_log: u64,
     pub idempotency: u64,
     pub rotations: u64,
+    /// Pending invitations whose time ran out.
+    pub invitations: u64,
     pub tombstones: u64,
     /// Uploads that never completed.
     pub attachments: u64,
@@ -94,6 +96,7 @@ pub async fn run(conn: &mut Conn, c: &Cutoffs<'_>) -> Result<Removed, sqlx::Erro
         security_log,
         idempotency,
         rotations,
+        invitations: 0,
         tombstones: 0,
         attachments: 0,
     })

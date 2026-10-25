@@ -128,8 +128,13 @@ impl App {
 
     /// Takes a token from a rate-limit bucket or fails with `429`.
     pub fn limit(&self, bucket: Bucket, key: &str, quota: Quota) -> ApiResult<()> {
+        self.limit_all(&[(bucket, key, quota)])
+    }
+
+    /// Takes a token from every bucket, or from none if one is empty.
+    pub fn limit_all(&self, buckets: &[(Bucket, &str, Quota)]) -> ApiResult<()> {
         self.limiter
-            .check(bucket, key, quota)
+            .check_all(buckets)
             .map_err(|seconds| ApiError::new(ErrorCode::RateLimited).retry_after(seconds))
     }
 }
