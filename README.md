@@ -56,6 +56,9 @@ Limits worth knowing:
 - `limits.large_body_budget_bytes` (default 128 MiB) caps the request bodies of large requests (batches, key rotation, attachment parts) held in memory at once; further requests wait. `limits.large_requests_per_account` (default 4) is how many of them one account may run at the same time.
 - `rate_limits.session_per_min` (600) and `rate_limits.account_per_min` (1200) limit authenticated requests per session and for all sessions of an account together.
 - `rate_limits.invites_per_account_per_hour` and `rate_limits.invites_per_invitee_per_hour` (30 each) limit invitations sent by one account and received by one account; pending invitations expire after `limits.invitation_ttl_days` (30).
+- `limits.idempotency_entries_per_account` (1000) and `limits.idempotency_bytes_per_account` (8 MiB) bound the answers stored for idempotency keys per account; beyond that the oldest give way, and a repeated request with such a key acts again like one older than a day.
+- `limits.sessions_per_account` (100) is the number of active sessions per account; a new one revokes the least recently used.
+- `logging.security_log_per_account_per_day` (1000) and `logging.security_log_anonymous_per_day` (10000) cap the security log per account (or without one), event and day; further events of that kind are only counted in one `log_capped` entry.
 - The quota follows the owner: when the account a vault counts against leaves it (demoted, left, removed by a key rotation or deleted), the vault counts against the owner with the oldest membership, who may then be over the quota until something is deleted.
 
 ## Commands
@@ -72,7 +75,7 @@ All commands take `--config <path>` (default `./config.toml`) and refuse to run 
 | `user list` / `user disable <email>` / `user enable <email>` | List accounts / disable an account and revoke its sessions / enable it again |
 | `user reset-2fa <email>` | Emergency: remove TOTP, passkeys and backup codes of an account; its sessions stay |
 | `backup --out <file.tar.zst>` | Write a backup of the database and the attachment files, also while the server runs |
-| `backup --dir <folder> [--keep-daily 14] [--keep-weekly 8]` | The same as `keeman-<YYYYMMDD-HHMMSS>.tar.zst` in a folder, then delete older backups there |
+| `backup --dir <folder> [--keep-daily 14] [--keep-weekly 8]` | The same as `keeman-<YYYYMMDD-HHMMSS>.tar.zst` in a folder, then delete older backups there; exit code 3 if attachment files were missing (then nothing is deleted) |
 | `restore --from <file.tar.zst> --data-dir <folder>` | Restore a backup into an empty data directory (server stopped) |
 | `check` | Check configuration, permissions, database integrity and attachment files; changes nothing, exit code 1 on problems |
 
@@ -154,6 +157,8 @@ sudo -u keeman-api /opt/keeman/keeman-server restore --from keeman-20261025-0300
 sudo -u keeman-api /opt/keeman/keeman-server check --config /etc/keeman/config.toml
 systemctl start keeman-api
 ```
+
+If an attachment file is missing, the backup is still written with the file listed under `missing` in the manifest, but the command ends with exit code 3 and keeps all older backups, so an incomplete run never pushes out a complete one. A file deleted while the backup ran can cause this; the next run is then complete. If it stays, `check` names the missing files.
 
 `restore` only fills an empty data directory (or one with the empty `attachments/` and `uploads/` that `init` leaves). It checks every file against the manifest before anything is put in place, and refuses archives with other entries. Try a restore now and then in a fresh environment, for example in a container, and run `check` afterwards.
 

@@ -17,8 +17,16 @@ All notable changes to this project are documented here. The format follows [Kee
 - Favicon pages and images are parsed, decoded and scaled on the blocking thread pool instead of the async workers.
 - The compose example trusts only the proxy's fixed address to set the client IP; before, any container in a private network could fake it for the rate limits.
 
+- Login, recovery start and reauth check the credential again in their write transaction: a password change or new recovery key committed while the key was being verified makes the attempt a failure, and disabled state and second factor come from that transaction. Endpoints that need reauth check the token, the session and the account again first thing in their transaction, and the session endpoints check the calling session, so a revocation or password change can no longer be overtaken by a request already running.
+- A passkey login rereads the passkey and its signature counter in the transaction that completes it and stores the counter only over the state it read; concurrent logins keep the counter monotonic, and a passkey removed meanwhile fails. Registering a passkey uses its token up in the transaction that stores it.
+- Answers stored for idempotency keys have a budget per account (`limits.idempotency_entries_per_account`, `limits.idempotency_bytes_per_account`); the oldest give way.
+- At most `limits.sessions_per_account` (default 100) active sessions per account; a new session revokes the least recently used.
+- The security log keeps at most `logging.security_log_per_account_per_day` entries per account, event and day (`logging.security_log_anonymous_per_day` without an account) and counts the rest in one `log_capped` entry. The migration `0003_limits.sql` runs on start.
+- Completions of the same attachment run one after another and take a slot for large requests; temporary files are deleted also when a request is cut off; creating an attachment whose ID still has files answers `409`.
+
 ### Changed
 
+- `backup` ends with exit code 3 and keeps all older backups when attachment files are missing; the archive is still written.
 - The storage quota (`limits.user_quota_bytes`) now counts objects including deletion markers and what open key rotations add, not only attachments. Vault creation, batches and key rotations that would exceed it get `507 quota_exceeded`, which is never stored for an idempotency key; deleting and shrinking always work. The migration `0002_quota.sql` runs on start.
 
 ## [0.1.0] - 2026-10-25
