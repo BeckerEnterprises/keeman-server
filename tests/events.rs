@@ -24,13 +24,18 @@ const FAST: Timings = Timings {
     auth_timeout: Duration::from_millis(300),
     ping_interval: Duration::from_millis(150),
     revalidate_interval: Duration::from_secs(3600),
+    send_timeout: Duration::from_millis(300),
 };
 
 /// The test app plus the address of a real listener serving its router.
 async fn serve(extra: &str) -> (TestApp, SocketAddr) {
+    serve_with(extra, FAST).await
+}
+
+async fn serve_with(extra: &str, timings: Timings) -> (TestApp, SocketAddr) {
     let dir = tempfile::tempdir().unwrap();
     let config = config_in(dir.path(), extra);
-    let t = TestApp::with_timings(config, dir, FAST).await;
+    let t = TestApp::with_timings(config, dir, timings).await;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let app = router(t.app.clone()).into_make_service_with_connect_info::<SocketAddr>();
@@ -526,4 +531,35 @@ async fn expired_invitations_are_deleted_and_announced() {
         .await,
         1
     );
+}
+
+#[tokio::test]
+async fn a_peer_that_stops_reading_is_dropped_after_the_send_timeout() {
+    // Pings so rare that only the send timeout can end the connection.
+    let timings = Timings {
+        ping_interval: Duration::from_secs(3600),
+        ..FAST
+    };
+    let (t, addr) = serve_with("", timings).await;
+    let alice = t.register("alice@example.com").await;
+    let ws = ready(addr, &alice).await;
+    assert_eq!(t.app.hub.connections(&alice.user_id), 1);
+    // The client never reads: large events fill the socket buffers until a
+    // send hangs.
+    let filler = json!({ "type": "filler", "data": "x".repeat(64 * 1024) });
+    for _ in 0..600 {
+        if t.app.hub.connections(&alice.user_id) == 0 {
+            break;
+        }
+        t.app.hub.publish([alice.user_id.as_str()], &filler);
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
+    for _ in 0..300 {
+        if t.app.hub.connections(&alice.user_id) == 0 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(t.app.hub.connections(&alice.user_id), 0);
+    drop(ws);
 }

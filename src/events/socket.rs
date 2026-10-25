@@ -10,7 +10,7 @@ use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket, WebSocketUpgr
 use axum::http::HeaderMap;
 use axum::response::Response;
 use serde::Deserialize;
-use tokio::time::{Instant, interval_at, timeout_at};
+use tokio::time::{Instant, interval_at, timeout, timeout_at};
 
 use super::hub::{CloseReason, Registration};
 use crate::app::App;
@@ -33,6 +33,8 @@ pub struct Timings {
     pub auth_timeout: Duration,
     pub ping_interval: Duration,
     pub revalidate_interval: Duration,
+    /// Longest wait for one frame to be sent.
+    pub send_timeout: Duration,
 }
 
 impl Default for Timings {
@@ -41,6 +43,7 @@ impl Default for Timings {
             auth_timeout: Duration::from_secs(5),
             ping_interval: Duration::from_secs(30),
             revalidate_interval: Duration::from_secs(30),
+            send_timeout: Duration::from_secs(10),
         }
     }
 }
@@ -104,24 +107,33 @@ async fn run(app: Arc<App>, mut socket: WebSocket) {
         Err(end) => end,
     };
     match end {
-        End::Close(code) => send_close(&mut socket, code).await,
+        End::Close(code) => send_close(&app, &mut socket, code).await,
         End::Revoked => {
             let revoked = Message::Text(Utf8Bytes::from_static(r#"{"type":"session_revoked"}"#));
-            if socket.send(revoked).await.is_ok() {
-                send_close(&mut socket, close::UNAUTHORIZED).await;
+            if send(&app, &mut socket, revoked).await {
+                send_close(&app, &mut socket, close::UNAUTHORIZED).await;
             }
         }
         End::Gone => {}
     }
 }
 
-async fn send_close(socket: &mut WebSocket, code: u16) {
+/// Sends one frame within the time limit; `false` if that failed. A peer
+/// that stops reading must not hold the task and its connection slot.
+async fn send(app: &App, socket: &mut WebSocket, message: Message) -> bool {
+    matches!(
+        timeout(app.event_timings.send_timeout, socket.send(message)).await,
+        Ok(Ok(()))
+    )
+}
+
+async fn send_close(app: &App, socket: &mut WebSocket, code: u16) {
     let frame = CloseFrame {
         code,
         reason: Utf8Bytes::default(),
     };
     // The peer may already be gone; there is nothing left to do then.
-    let _ = socket.send(Message::Close(Some(frame))).await;
+    send(app, socket, Message::Close(Some(frame))).await;
 }
 
 /// The first message must be `auth` with a valid access token.
@@ -164,13 +176,14 @@ async fn attach(app: &App, socket: &mut WebSocket, session: &AuthSession) -> End
     };
     // A revocation between the token check and the registration would be missed.
     let end = match still_valid(app, &session.session_id).await {
-        Ok(true) => match socket
-            .send(Message::Text(Utf8Bytes::from_static(r#"{"type":"ready"}"#)))
-            .await
-        {
-            Ok(()) => serve(app, socket, &mut registration).await,
-            Err(_) => End::Gone,
-        },
+        Ok(true) => {
+            let ready = Message::Text(Utf8Bytes::from_static(r#"{"type":"ready"}"#));
+            if send(app, socket, ready).await {
+                serve(app, socket, &mut registration).await
+            } else {
+                End::Gone
+            }
+        }
         Ok(false) => End::Revoked,
         Err(_) => End::Close(close::INTERNAL),
     };
@@ -204,7 +217,7 @@ async fn serve(app: &App, socket: &mut WebSocket, registration: &mut Registratio
                 let Some(text) = message else {
                     return End::Close(close::INTERNAL);
                 };
-                if socket.send(Message::Text(text.into())).await.is_err() {
+                if !send(app, socket, Message::Text(text.into())).await {
                     return End::Gone;
                 }
             }
@@ -214,7 +227,7 @@ async fn serve(app: &App, socket: &mut WebSocket, registration: &mut Registratio
                     return End::Gone;
                 }
                 awaiting_pong = true;
-                if socket.send(Message::Ping(Default::default())).await.is_err() {
+                if !send(app, socket, Message::Ping(Default::default())).await {
                     return End::Gone;
                 }
             }
