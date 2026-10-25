@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE objects SET\n           data = (SELECT r.data FROM rotation_objects r WHERE r.rotation_id = ? AND r.id = objects.id),\n           size = (SELECT length(r.data) FROM rotation_objects r WHERE r.rotation_id = ? AND r.id = objects.id),\n           key_version = ?, revision = ?, updated_at = ?, updated_by = ?\n         WHERE vault_id = ? AND deleted = 0\n           AND id IN (SELECT id FROM rotation_objects WHERE rotation_id = ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "d2de6b929e3180a50f233c85f6fec855766523c23311632e347b4655b019fbdb"
+}

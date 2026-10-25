@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT endpoint, request_hash, status, response FROM idempotency WHERE user_id = ? AND key = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "endpoint",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idempotency",
+            "name": "endpoint"
+          }
+        }
+      },
+      {
+        "name": "request_hash",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "idempotency",
+            "name": "request_hash"
+          }
+        }
+      },
+      {
+        "name": "status",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "idempotency",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "name": "response",
+        "ordinal": 3,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "idempotency",
+            "name": "response"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ec21a96e9b6bfe5db04fc5f3c8caeaabf65088646c6f2581f649594625e51b6b"
+}

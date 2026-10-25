@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM login_throttle WHERE (locked_until IS NULL OR locked_until <= ?) AND updated_at <= ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "a4faa4496ee9a38568b0eb0a732c1cd283d1542c5fdada6704974dfe6b9de7ca"
+}

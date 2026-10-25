@@ -1,0 +1,105 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT s.id AS \"session_id!\", s.user_id, s.client_type, r.superseded_at, s.revoked_at,\n             s.refresh_expires_at, u.disabled AS \"disabled: bool\",\n             (r.rowid = (SELECT MAX(p.rowid) FROM refresh_tokens p\n                         WHERE p.session_id = r.session_id AND p.superseded_at IS NOT NULL)) AS \"is_previous!: bool\"\n           FROM refresh_tokens r\n           JOIN sessions s ON s.id = r.session_id\n           JOIN users u ON u.id = s.user_id\n           WHERE r.token_hash = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "session_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "name": "client_type",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "client_type"
+          }
+        }
+      },
+      {
+        "name": "superseded_at",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "refresh_tokens",
+            "name": "superseded_at"
+          }
+        }
+      },
+      {
+        "name": "revoked_at",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "revoked_at"
+          }
+        }
+      },
+      {
+        "name": "refresh_expires_at",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "refresh_expires_at"
+          }
+        }
+      },
+      {
+        "name": "disabled: bool",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "disabled"
+          }
+        }
+      },
+      {
+        "name": "is_previous!: bool",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a1dd83c1ef051d917b8242aae67502ebc6516913b970a69b515f7db1958e843d"
+}

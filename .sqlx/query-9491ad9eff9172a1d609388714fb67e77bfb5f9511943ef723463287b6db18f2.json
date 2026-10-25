@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET totp_secret_enc = NULL, totp_enabled = 0, totp_last_step = NULL, updated_at = ?\n         WHERE id = ? AND totp_enabled = 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "9491ad9eff9172a1d609388714fb67e77bfb5f9511943ef723463287b6db18f2"
+}

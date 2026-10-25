@@ -1,0 +1,382 @@
+{
+  "vectors": "totp",
+  "format_version": 1,
+  "generator": "@keeman/core 0.1.0, libsodium-wrappers-sumo 0.8.4",
+  "cases": [
+    {
+      "id": "rfc6238-sha1-59",
+      "description": "RFC 6238 appendix B, SHA1, T = 59",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "algorithm": "SHA1",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 59,
+      "expected": {
+        "counter": 1,
+        "code": "94287082",
+        "next": "37359152",
+        "valid_until": 60
+      }
+    },
+    {
+      "id": "rfc6238-sha1-1111111109",
+      "description": "RFC 6238 appendix B, SHA1, T = 1111111109",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "algorithm": "SHA1",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1111111109,
+      "expected": {
+        "counter": 37037036,
+        "code": "07081804",
+        "next": "14050471",
+        "valid_until": 1111111110
+      }
+    },
+    {
+      "id": "rfc6238-sha1-1111111111",
+      "description": "RFC 6238 appendix B, SHA1, T = 1111111111",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "algorithm": "SHA1",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1111111111,
+      "expected": {
+        "counter": 37037037,
+        "code": "14050471",
+        "next": "44266759",
+        "valid_until": 1111111140
+      }
+    },
+    {
+      "id": "rfc6238-sha1-1234567890",
+      "description": "RFC 6238 appendix B, SHA1, T = 1234567890",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "algorithm": "SHA1",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1234567890,
+      "expected": {
+        "counter": 41152263,
+        "code": "89005924",
+        "next": "38590587",
+        "valid_until": 1234567920
+      }
+    },
+    {
+      "id": "rfc6238-sha1-2000000000",
+      "description": "RFC 6238 appendix B, SHA1, T = 2000000000",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "algorithm": "SHA1",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 2000000000,
+      "expected": {
+        "counter": 66666666,
+        "code": "69279037",
+        "next": "91637009",
+        "valid_until": 2000000010
+      }
+    },
+    {
+      "id": "rfc6238-sha1-20000000000",
+      "description": "RFC 6238 appendix B, SHA1, T = 20000000000",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "algorithm": "SHA1",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 20000000000,
+      "expected": {
+        "counter": 666666666,
+        "code": "65353130",
+        "next": "02128202",
+        "valid_until": 20000000010
+      }
+    },
+    {
+      "id": "rfc6238-sha256-59",
+      "description": "RFC 6238 appendix B, SHA256, T = 59",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 59,
+      "expected": {
+        "counter": 1,
+        "code": "46119246",
+        "next": "30882438",
+        "valid_until": 60
+      }
+    },
+    {
+      "id": "rfc6238-sha256-1111111109",
+      "description": "RFC 6238 appendix B, SHA256, T = 1111111109",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1111111109,
+      "expected": {
+        "counter": 37037036,
+        "code": "68084774",
+        "next": "67062674",
+        "valid_until": 1111111110
+      }
+    },
+    {
+      "id": "rfc6238-sha256-1111111111",
+      "description": "RFC 6238 appendix B, SHA256, T = 1111111111",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1111111111,
+      "expected": {
+        "counter": 37037037,
+        "code": "67062674",
+        "next": "88267535",
+        "valid_until": 1111111140
+      }
+    },
+    {
+      "id": "rfc6238-sha256-1234567890",
+      "description": "RFC 6238 appendix B, SHA256, T = 1234567890",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1234567890,
+      "expected": {
+        "counter": 41152263,
+        "code": "91819424",
+        "next": "55512973",
+        "valid_until": 1234567920
+      }
+    },
+    {
+      "id": "rfc6238-sha256-2000000000",
+      "description": "RFC 6238 appendix B, SHA256, T = 2000000000",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 2000000000,
+      "expected": {
+        "counter": 66666666,
+        "code": "90698825",
+        "next": "97023967",
+        "valid_until": 2000000010
+      }
+    },
+    {
+      "id": "rfc6238-sha256-20000000000",
+      "description": "RFC 6238 appendix B, SHA256, T = 20000000000",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 20000000000,
+      "expected": {
+        "counter": 666666666,
+        "code": "77737706",
+        "next": "59879174",
+        "valid_until": 20000000010
+      }
+    },
+    {
+      "id": "rfc6238-sha512-59",
+      "description": "RFC 6238 appendix B, SHA512, T = 59",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+      "algorithm": "SHA512",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 59,
+      "expected": {
+        "counter": 1,
+        "code": "90693936",
+        "next": "68765371",
+        "valid_until": 60
+      }
+    },
+    {
+      "id": "rfc6238-sha512-1111111109",
+      "description": "RFC 6238 appendix B, SHA512, T = 1111111109",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+      "algorithm": "SHA512",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1111111109,
+      "expected": {
+        "counter": 37037036,
+        "code": "25091201",
+        "next": "99943326",
+        "valid_until": 1111111110
+      }
+    },
+    {
+      "id": "rfc6238-sha512-1111111111",
+      "description": "RFC 6238 appendix B, SHA512, T = 1111111111",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+      "algorithm": "SHA512",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1111111111,
+      "expected": {
+        "counter": 37037037,
+        "code": "99943326",
+        "next": "77914268",
+        "valid_until": 1111111140
+      }
+    },
+    {
+      "id": "rfc6238-sha512-1234567890",
+      "description": "RFC 6238 appendix B, SHA512, T = 1234567890",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+      "algorithm": "SHA512",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 1234567890,
+      "expected": {
+        "counter": 41152263,
+        "code": "93441116",
+        "next": "93638120",
+        "valid_until": 1234567920
+      }
+    },
+    {
+      "id": "rfc6238-sha512-2000000000",
+      "description": "RFC 6238 appendix B, SHA512, T = 2000000000",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+      "algorithm": "SHA512",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 2000000000,
+      "expected": {
+        "counter": 66666666,
+        "code": "38618901",
+        "next": "41841313",
+        "valid_until": 2000000010
+      }
+    },
+    {
+      "id": "rfc6238-sha512-20000000000",
+      "description": "RFC 6238 appendix B, SHA512, T = 20000000000",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+      "algorithm": "SHA512",
+      "digits": 8,
+      "period": 30,
+      "unix_time": 20000000000,
+      "expected": {
+        "counter": 666666666,
+        "code": "47863826",
+        "next": "57094835",
+        "valid_until": 20000000010
+      }
+    },
+    {
+      "id": "six-digits-0",
+      "description": "Defaults: SHA1, 6 digits, 30 s; a 10-byte secret",
+      "secret_base32": "JBSWY3DPEHPK3PXP",
+      "algorithm": "SHA1",
+      "digits": 6,
+      "period": 30,
+      "unix_time": 0,
+      "expected": {
+        "counter": 0,
+        "code": "282760",
+        "next": "996554",
+        "valid_until": 30
+      }
+    },
+    {
+      "id": "six-digits-29",
+      "description": "Defaults: SHA1, 6 digits, 30 s; a 10-byte secret",
+      "secret_base32": "JBSWY3DPEHPK3PXP",
+      "algorithm": "SHA1",
+      "digits": 6,
+      "period": 30,
+      "unix_time": 29,
+      "expected": {
+        "counter": 0,
+        "code": "282760",
+        "next": "996554",
+        "valid_until": 30
+      }
+    },
+    {
+      "id": "six-digits-30",
+      "description": "Defaults: SHA1, 6 digits, 30 s; a 10-byte secret",
+      "secret_base32": "JBSWY3DPEHPK3PXP",
+      "algorithm": "SHA1",
+      "digits": 6,
+      "period": 30,
+      "unix_time": 30,
+      "expected": {
+        "counter": 1,
+        "code": "996554",
+        "next": "602287",
+        "valid_until": 60
+      }
+    },
+    {
+      "id": "six-digits-1792744920",
+      "description": "Defaults: SHA1, 6 digits, 30 s; a 10-byte secret",
+      "secret_base32": "JBSWY3DPEHPK3PXP",
+      "algorithm": "SHA1",
+      "digits": 6,
+      "period": 30,
+      "unix_time": 1792744920,
+      "expected": {
+        "counter": 59758164,
+        "code": "877893",
+        "next": "313432",
+        "valid_until": 1792744950
+      }
+    },
+    {
+      "id": "period-60",
+      "description": "SHA256, 6 digits, 60 s period",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+      "algorithm": "SHA256",
+      "digits": 6,
+      "period": 60,
+      "unix_time": 1792744959,
+      "expected": {
+        "counter": 29879082,
+        "code": "115530",
+        "next": "213154",
+        "valid_until": 1792744980
+      }
+    },
+    {
+      "id": "seven-digits",
+      "description": "SHA512, 7 digits, 30 s",
+      "secret_base32": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+      "algorithm": "SHA512",
+      "digits": 7,
+      "period": 30,
+      "unix_time": 1792744920,
+      "expected": {
+        "counter": 59758164,
+        "code": "1005722",
+        "next": "2795877",
+        "valid_until": 1792744950
+      }
+    },
+    {
+      "id": "period-15-boundary",
+      "description": "SHA1, 8 digits, 15 s, last second of a step",
+      "secret_base32": "JBSWY3DPEHPK3PXP",
+      "algorithm": "SHA1",
+      "digits": 8,
+      "period": 15,
+      "unix_time": 1792744934,
+      "expected": {
+        "counter": 119516328,
+        "code": "39257093",
+        "next": "89424767",
+        "valid_until": 1792744935
+      }
+    }
+  ]
+}

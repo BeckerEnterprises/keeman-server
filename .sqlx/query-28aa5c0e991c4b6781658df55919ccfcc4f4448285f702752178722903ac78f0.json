@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT role, state FROM memberships WHERE vault_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "role",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "name": "state",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "state"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "28aa5c0e991c4b6781658df55919ccfcc4f4448285f702752178722903ac78f0"
+}

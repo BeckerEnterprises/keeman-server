@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET kdf_params = ?, kdf_salt = ?, auth_hash = ?, user_key_wrapped = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "061d6f36d306969ad6c724536e7d859f4aea8302b05d3e2e404b30e7e23fae3b"
+}

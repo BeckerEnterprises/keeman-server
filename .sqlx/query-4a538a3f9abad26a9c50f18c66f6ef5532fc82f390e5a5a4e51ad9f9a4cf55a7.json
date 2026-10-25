@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) AS \"count!: i64\" FROM memberships\n           WHERE vault_id = ? AND role = 'owner' AND state = 'active'",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4a538a3f9abad26a9c50f18c66f6ef5532fc82f390e5a5a4e51ad9f9a4cf55a7"
+}

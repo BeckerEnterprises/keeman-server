@@ -1,0 +1,81 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT email, created_at, totp_enabled AS \"totp_enabled: bool\",\n             (SELECT COUNT(*) FROM webauthn_credentials w WHERE w.user_id = users.id) AS \"webauthn_credentials!: i64\",\n             last_login_at, disabled AS \"disabled: bool\"\n           FROM users ORDER BY created_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "email",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "totp_enabled: bool",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_enabled"
+          }
+        }
+      },
+      {
+        "name": "webauthn_credentials!: i64",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_login_at",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "last_login_at"
+          }
+        }
+      },
+      {
+        "name": "disabled: bool",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "disabled"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "10865020c7d7467dbb3bd6b6ba65ebbbe85b7a2a6650aee9ec7b49c29195921f"
+}

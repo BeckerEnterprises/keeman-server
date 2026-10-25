@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE memberships SET role = ? WHERE vault_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "f98212f33f7cba2dee7ff502a74b2662f7304d0a295c42528ac8248efbe45f0d"
+}

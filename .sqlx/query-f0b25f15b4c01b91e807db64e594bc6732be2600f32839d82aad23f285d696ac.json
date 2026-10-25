@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO challenges (token_hash, purpose, user_id, session_id, state, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "f0b25f15b4c01b91e807db64e594bc6732be2600f32839d82aad23f285d696ac"
+}

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT user_data_revision FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_data_revision",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "user_data_revision"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "966c8c5d0dff20e2d82c258204c15c5860e506f79d06b0f1bd7e79785c73d986"
+}

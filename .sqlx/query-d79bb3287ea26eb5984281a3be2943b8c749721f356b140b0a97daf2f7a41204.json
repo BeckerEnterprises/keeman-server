@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE challenges SET attempts = attempts + 1 WHERE token_hash = ? RETURNING attempts",
+  "describe": {
+    "columns": [
+      {
+        "name": "attempts",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "attempts"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d79bb3287ea26eb5984281a3be2943b8c749721f356b140b0a97daf2f7a41204"
+}

@@ -1,0 +1,87 @@
+[package]
+name = "keeman-server"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+description = "API server for KeeMan, a self-hosted zero-knowledge password manager"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/BeckerEnterprises/keeman-server"
+publish = false
+
+[dependencies]
+argon2 = { version = "0.6.0", default-features = false, features = ["alloc", "password-hash"] }
+axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "matched-path", "tokio", "ws"] }
+base64 = "0.23.1"
+# XChaCha20-Poly1305 for the account TOTP secret.
+chacha20poly1305 = { version = "0.11.0", default-features = false, features = ["alloc"] }
+clap = { version = "4.6.7", features = ["derive"] }
+# Streams attachment files; already in the tree through axum and sqlx.
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
+getrandom = "0.4.3"
+# Favicon proxy: decodes ICO, PNG, JPEG, GIF, WebP and BMP, writes PNG.
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"] }
+# Favicon proxy: DNS lookups whose addresses are checked first.
+hickory-resolver = "0.26.3"
+hkdf = "0.13.0"
+hmac = "0.13.0"
+ipnet = "2.12.2"
+# Favicon proxy: HTTP/1.1 only, no proxy, no automatic redirects; TLS
+# through rustls with the ring provider (aws-lc-rs would need cmake).
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider"] }
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+# System certificates for the favicon proxy; already required by reqwest.
+rustls-platform-verifier = "0.7.1"
+# Favicon proxy: <link rel="icon"> in HTML (html5ever).
+scraper = { version = "0.27.0", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+serde_path_to_error = "0.1.20"
+# HMAC-SHA1 of the account TOTP (RFC 6238).
+sha1 = "0.11.0"
+sha2 = "0.11.1"
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "sqlite", "macros", "migrate"] }
+subtle = "2.6.1"
+time = { version = "0.3.55", features = ["formatting", "parsing", "macros"] }
+tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time", "fs", "io-util"] }
+toml = "0.9.8"
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.7.1", features = ["catch-panic", "cors", "timeout"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "json", "std"] }
+unicode-normalization = "0.1.25"
+# WHATWG URL parsing for the favicon proxy, as browsers do.
+url = "2.5.8"
+uuid = { version = "1.28.0", features = ["v7"] }
+# Passkeys as second factor; links the system OpenSSL. Stored
+# passkeys are serialised library state, so stay on 0.5.x.
+webauthn-rs = { version = "0.5.5", default-features = false, features = ["danger-allow-state-serialisation"] }
+
+[dev-dependencies]
+futures-util = { version = "0.3.34", default-features = false, features = ["sink"] }
+http-body-util = "0.1.5"
+# Software authenticator (P-256) for the WebAuthn tests; already in the tree.
+openssl = "0.10.81"
+proptest = { version = "1.12.0", default-features = false, features = ["std"] }
+tempfile = "3.27.0"
+tokio-tungstenite = { version = "0.29.0", default-features = false, features = ["connect", "handshake"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+# No panics in request paths; allowed in tests via clippy.toml.
+unwrap_used = "deny"
+expect_used = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+
+[profile.release]
+overflow-checks = true
+
+# Argon2id and BLAKE2 are far too slow unoptimised; keep tests fast.
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3

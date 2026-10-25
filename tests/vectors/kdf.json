@@ -1,0 +1,265 @@
+{
+  "vectors": "kdf",
+  "format_version": 1,
+  "generator": "@keeman/core 0.1.0, libsodium-wrappers-sumo 0.8.4",
+  "cases": [
+    {
+      "id": "ascii-min-params",
+      "kind": "derive",
+      "password": "correct horse battery staple",
+      "password_nfc_utf8_hex": "636f727265637420686f727365206261747465727920737461706c65",
+      "salt_hex": "1929aa14d142eaf3242c23994e0187a2",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 2,
+        "mem": 19922944
+      },
+      "expected": {
+        "master_key_hex": "72fd711dfe1ee766b9352da0875332d1c53e9ff150a9ab87c47ebcfc37307d45",
+        "auth_key_hex": "9628c52bf33aee3b1379fd98b1b876c4fda99c0587dcfe810caef282519e6c09",
+        "wrap_key_hex": "9eff0e535a3e1d7b5f370afdaf9e7e1aa6a7c595e6b8e5ab61057a1ba2c76fb6"
+      }
+    },
+    {
+      "id": "ascii-default-params",
+      "kind": "derive",
+      "password": "correct horse battery staple",
+      "password_nfc_utf8_hex": "636f727265637420686f727365206261747465727920737461706c65",
+      "salt_hex": "1929aa14d142eaf3242c23994e0187a2",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 3,
+        "mem": 67108864
+      },
+      "expected": {
+        "master_key_hex": "b91cb5ecff2c4dd9ef3a06c9bed4e7b07847b05967761e1317911d94ac1aecc4",
+        "auth_key_hex": "e9b3bf15f58ae48d4830f4a71716c7bf3c902e06dd8270ea55f1a4795c4621ae",
+        "wrap_key_hex": "8d74f01cb4d046d91b6432816b58a7e5963e195e39ea09e476b362310e093b64"
+      }
+    },
+    {
+      "id": "umlaut-nfc",
+      "kind": "derive",
+      "password": "Grüße aus Köln",
+      "password_nfc_utf8_hex": "4772c3bcc39f6520617573204bc3b66c6e",
+      "salt_hex": "1929aa14d142eaf3242c23994e0187a2",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 2,
+        "mem": 19922944
+      },
+      "expected": {
+        "master_key_hex": "41975dc6373651d5b7da22f97f048ea0cae1eb69b603a2c0118681138f87f5bf",
+        "auth_key_hex": "f0eb8883cbcf83584f45938556b9e8ad593e9861c7197f67d66a7cd6835deef4",
+        "wrap_key_hex": "e23c92814dd42ef62ef49726d5927a0cc6982e7b10caf1f3df9c06c6b73d3fbb"
+      }
+    },
+    {
+      "id": "umlaut-nfd",
+      "kind": "derive",
+      "password": "Grüße aus Köln",
+      "password_nfc_utf8_hex": "4772c3bcc39f6520617573204bc3b66c6e",
+      "salt_hex": "1929aa14d142eaf3242c23994e0187a2",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 2,
+        "mem": 19922944
+      },
+      "expected": {
+        "master_key_hex": "41975dc6373651d5b7da22f97f048ea0cae1eb69b603a2c0118681138f87f5bf",
+        "auth_key_hex": "f0eb8883cbcf83584f45938556b9e8ad593e9861c7197f67d66a7cd6835deef4",
+        "wrap_key_hex": "e23c92814dd42ef62ef49726d5927a0cc6982e7b10caf1f3df9c06c6b73d3fbb"
+      }
+    },
+    {
+      "id": "astral",
+      "kind": "derive",
+      "password": "🔑 Schlüssel 𝄞",
+      "password_nfc_utf8_hex": "f09f9491205363686cc3bc7373656c20f09d849e",
+      "salt_hex": "1929aa14d142eaf3242c23994e0187a2",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 2,
+        "mem": 19922944
+      },
+      "expected": {
+        "master_key_hex": "8b7214ff7cb8418c81d6727ca91e4fae9eba89b6ae41430bf172e2f44258ff1f",
+        "auth_key_hex": "2813362745af5c869f15dda667ca23fef49cd802624c40aa447d1c421e37eee6",
+        "wrap_key_hex": "3017f6a26f34ec0c9e00551192d33f18cc3a239a9989a00e8de48a4cf8bd1a62"
+      }
+    },
+    {
+      "id": "spaces-kept",
+      "kind": "derive",
+      "password": "  leading and trailing  ",
+      "password_nfc_utf8_hex": "20206c656164696e6720616e6420747261696c696e672020",
+      "salt_hex": "1929aa14d142eaf3242c23994e0187a2",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 2,
+        "mem": 19922944
+      },
+      "expected": {
+        "master_key_hex": "b7d5d9cad2e3d4610ecd3ae2ac9cec60f95931196a22fe40f9b56635f04b2cb5",
+        "auth_key_hex": "ed6629431d5a513fc4a841f201ce0a0f979ea427160718716d812fa3dfc835f9",
+        "wrap_key_hex": "f477dd79ed2fd3ce7c979ad249b4de3305345e97ffd5cdc2e3b8e1afdbe57904"
+      }
+    },
+    {
+      "id": "mem-not-power-of-two",
+      "kind": "derive",
+      "password": "correct horse battery staple",
+      "password_nfc_utf8_hex": "636f727265637420686f727365206261747465727920737461706c65",
+      "salt_hex": "1929aa14d142eaf3242c23994e0187a2",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 3,
+        "mem": 20971520
+      },
+      "expected": {
+        "master_key_hex": "2dee533139d5070533371b202afee7726c5e6e8dbeee604b69c701235e3e1bcd",
+        "auth_key_hex": "2b021f883395f18375c5eacb31d1f4a4a3e01c01f8e7728c061fe7bb43e24943",
+        "wrap_key_hex": "225ced313ea463d3101648ed31ae12c44714d958b9b81d3c1cbd7f819e2dc032"
+      }
+    },
+    {
+      "id": "params-min",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 2,
+        "mem": 19922944
+      },
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "params-max",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 10,
+        "mem": 1073741824
+      },
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "params-ops-below",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 1,
+        "mem": 67108864
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "params-ops-above",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 11,
+        "mem": 67108864
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "params-mem-below",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 3,
+        "mem": 19921920
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "params-mem-above",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 3,
+        "mem": 1073742848
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "params-mem-not-multiple-of-1024",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 3,
+        "mem": 67108865
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "params-wrong-alg",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2i13",
+        "ops": 3,
+        "mem": 67108864
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "params-ops-not-integer",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 2.5,
+        "mem": 67108864
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "params-ops-string",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": "3",
+        "mem": 67108864
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "params-mem-missing",
+      "kind": "params",
+      "kdf": {
+        "alg": "argon2id13",
+        "ops": 3
+      },
+      "expected": {
+        "error": "validation"
+      }
+    },
+    {
+      "id": "password-lone-surrogate",
+      "kind": "password_check",
+      "password": "pw\ud800x",
+      "expected": {
+        "error": "validation"
+      }
+    }
+  ]
+}

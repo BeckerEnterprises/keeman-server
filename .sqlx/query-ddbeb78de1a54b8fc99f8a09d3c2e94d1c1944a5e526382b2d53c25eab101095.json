@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM login_throttle WHERE email_hmac = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "ddbeb78de1a54b8fc99f8a09d3c2e94d1c1944a5e526382b2d53c25eab101095"
+}

@@ -1,0 +1,160 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", email, kdf_params, kdf_salt, user_key_wrapped, public_key, private_key_wrapped,\n             user_data, user_data_revision, totp_enabled AS \"totp_enabled: bool\",\n             (SELECT COUNT(*) FROM webauthn_credentials w WHERE w.user_id = users.id) AS \"webauthn_credentials!: i64\",\n             (SELECT COUNT(*) FROM backup_codes b WHERE b.user_id = users.id AND b.used_at IS NULL) AS \"backup_codes_remaining!: i64\",\n             created_at\n           FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "email",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "name": "kdf_params",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "kdf_params"
+          }
+        }
+      },
+      {
+        "name": "kdf_salt",
+        "ordinal": 3,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "kdf_salt"
+          }
+        }
+      },
+      {
+        "name": "user_key_wrapped",
+        "ordinal": 4,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "user_key_wrapped"
+          }
+        }
+      },
+      {
+        "name": "public_key",
+        "ordinal": 5,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "public_key"
+          }
+        }
+      },
+      {
+        "name": "private_key_wrapped",
+        "ordinal": 6,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "private_key_wrapped"
+          }
+        }
+      },
+      {
+        "name": "user_data",
+        "ordinal": 7,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "user_data"
+          }
+        }
+      },
+      {
+        "name": "user_data_revision",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "user_data_revision"
+          }
+        }
+      },
+      {
+        "name": "totp_enabled: bool",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_enabled"
+          }
+        }
+      },
+      {
+        "name": "webauthn_credentials!: i64",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "backup_codes_remaining!: i64",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 12,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "aa14b7df3af4800dee3006e122c76202005efcac3464bb36e384255cae8b5b54"
+}

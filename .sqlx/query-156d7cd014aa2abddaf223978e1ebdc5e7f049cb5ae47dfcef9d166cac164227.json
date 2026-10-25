@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT kdf_params, kdf_salt FROM users WHERE email = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "kdf_params",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "kdf_params"
+          }
+        }
+      },
+      {
+        "name": "kdf_salt",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "kdf_salt"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "156d7cd014aa2abddaf223978e1ebdc5e7f049cb5ae47dfcef9d166cac164227"
+}

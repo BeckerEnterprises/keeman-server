@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT 1 AS \"one!: i64\" FROM sessions WHERE id = ? AND user_id = ? AND revoked_at IS NULL AND refresh_expires_at > ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "one!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6f229fda6c04c5930ec114930150bedf66f5243b501b10a5849694b84e1c8374"
+}

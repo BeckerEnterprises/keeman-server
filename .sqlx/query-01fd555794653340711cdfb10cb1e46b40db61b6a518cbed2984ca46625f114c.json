@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM refresh_tokens WHERE superseded_at IS NOT NULL AND superseded_at <= ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "01fd555794653340711cdfb10cb1e46b40db61b6a518cbed2984ca46625f114c"
+}

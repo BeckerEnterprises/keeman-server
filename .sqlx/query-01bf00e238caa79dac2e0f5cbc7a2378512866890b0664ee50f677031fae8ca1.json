@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM idempotency WHERE created_at <= ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "01bf00e238caa79dac2e0f5cbc7a2378512866890b0664ee50f677031fae8ca1"
+}

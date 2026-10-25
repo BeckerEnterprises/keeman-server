@@ -1,0 +1,110 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", type AS kind, revision, key_version, deleted AS \"deleted: bool\",\n             data, updated_at, updated_by FROM objects\n           WHERE vault_id = ? AND revision > ? AND (? OR deleted = 0) AND (revision, id) > (?, ?)\n           ORDER BY revision, id LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "kind",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "name": "revision",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "revision"
+          }
+        }
+      },
+      {
+        "name": "key_version",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "key_version"
+          }
+        }
+      },
+      {
+        "name": "deleted: bool",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "deleted"
+          }
+        }
+      },
+      {
+        "name": "data",
+        "ordinal": 5,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "data"
+          }
+        }
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "name": "updated_by",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "updated_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "046daabd11aced6efd8576e6b45986d15338654f16e15c800df59ae109c46617"
+}

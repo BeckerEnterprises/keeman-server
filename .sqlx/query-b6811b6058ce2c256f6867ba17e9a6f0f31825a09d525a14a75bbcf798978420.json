@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM sessions WHERE revoked_at IS NOT NULL OR refresh_expires_at <= ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "b6811b6058ce2c256f6867ba17e9a6f0f31825a09d525a14a75bbcf798978420"
+}

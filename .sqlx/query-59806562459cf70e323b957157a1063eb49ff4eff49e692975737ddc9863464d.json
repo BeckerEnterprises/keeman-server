@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT email, totp_enabled AS \"enabled: bool\", totp_secret_enc AS secret_enc,\n             totp_last_step AS last_step\n           FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "email",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "name": "enabled: bool",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_enabled"
+          }
+        }
+      },
+      {
+        "name": "secret_enc",
+        "ordinal": 2,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_secret_enc"
+          }
+        }
+      },
+      {
+        "name": "last_step",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_last_step"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "59806562459cf70e323b957157a1063eb49ff4eff49e692975737ddc9863464d"
+}

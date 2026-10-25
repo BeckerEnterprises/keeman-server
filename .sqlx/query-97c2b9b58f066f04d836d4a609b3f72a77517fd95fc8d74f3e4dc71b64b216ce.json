@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT m.vault_id AS \"vault_id!\" FROM memberships m\n           WHERE m.user_id = ? AND m.state = 'active'\n             AND NOT EXISTS (SELECT 1 FROM memberships o WHERE o.vault_id = m.vault_id\n                             AND o.user_id != m.user_id AND o.state = 'active')",
+  "describe": {
+    "columns": [
+      {
+        "name": "vault_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "vault_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "97c2b9b58f066f04d836d4a609b3f72a77517fd95fc8d74f3e4dc71b64b216ce"
+}

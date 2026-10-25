@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE vaults SET tombstone_horizon = MAX(tombstone_horizon, ?) WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "76de3571bf5c698fb07504bb74ede6990f6f118a437f9b9ccad2bf0de04bb61f"
+}

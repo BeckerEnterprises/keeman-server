@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO login_throttle (email_hmac, failures, locked_until, updated_at) VALUES (?, ?, ?, ?)\n         ON CONFLICT (email_hmac) DO UPDATE SET failures = excluded.failures,\n           locked_until = excluded.locked_until, updated_at = excluded.updated_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "5e7b3a60eb28460eda2ce3e29038886bc02728f7b4fce59f016fc0f64a224249"
+}

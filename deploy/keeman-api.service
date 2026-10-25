@@ -1,0 +1,33 @@
+# systemd unit of the KeeMan API server for the layout described in the README:
+# binary /opt/keeman/keeman-server, configuration and secret in /etc/keeman/,
+# data in /var/lib/keeman/, service user keeman-api.
+# Install: sudo install -m 0644 deploy/keeman-api.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now keeman-api
+[Unit]
+Description=KeeMan API server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=keeman-api
+Group=keeman-api
+ExecStart=/opt/keeman/keeman-server serve --config /etc/keeman/config.toml
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/keeman
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

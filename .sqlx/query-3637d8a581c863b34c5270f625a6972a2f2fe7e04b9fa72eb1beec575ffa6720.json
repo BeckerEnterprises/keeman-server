@@ -1,0 +1,189 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT v.id AS \"vault_id!\", m.role, m.state, v.key_version AS vault_key_version,\n             m.key_version AS member_key_version, m.key_wrapped, m.key_box, m.sender_id,\n             m.pending_key_box, m.pending_key_version, m.pending_key_sender_id, v.revision,\n             v.rotation_required AS \"rotation_required: bool\",\n             (SELECT COUNT(*) FROM memberships c WHERE c.vault_id = v.id AND c.state = 'active') AS \"member_count!: i64\",\n             v.created_at\n           FROM memberships m JOIN vaults v ON v.id = m.vault_id\n           WHERE m.user_id = ?\n           ORDER BY v.created_at, v.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "vault_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "vaults",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "role",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "name": "state",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "name": "vault_key_version",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vaults",
+            "name": "key_version"
+          }
+        }
+      },
+      {
+        "name": "member_key_version",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "key_version"
+          }
+        }
+      },
+      {
+        "name": "key_wrapped",
+        "ordinal": 5,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "key_wrapped"
+          }
+        }
+      },
+      {
+        "name": "key_box",
+        "ordinal": 6,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "key_box"
+          }
+        }
+      },
+      {
+        "name": "sender_id",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "sender_id"
+          }
+        }
+      },
+      {
+        "name": "pending_key_box",
+        "ordinal": 8,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "pending_key_box"
+          }
+        }
+      },
+      {
+        "name": "pending_key_version",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "pending_key_version"
+          }
+        }
+      },
+      {
+        "name": "pending_key_sender_id",
+        "ordinal": 10,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "pending_key_sender_id"
+          }
+        }
+      },
+      {
+        "name": "revision",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vaults",
+            "name": "revision"
+          }
+        }
+      },
+      {
+        "name": "rotation_required: bool",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vaults",
+            "name": "rotation_required"
+          }
+        }
+      },
+      {
+        "name": "member_count!: i64",
+        "ordinal": 13,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 14,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "vaults",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3637d8a581c863b34c5270f625a6972a2f2fe7e04b9fa72eb1beec575ffa6720"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE attachments SET state = 'complete', completed_at = ? WHERE id = ? AND state = 'uploading'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "e3c8a5e986add8c6f9a14584b102baa24bd8337b19f84ca8df3ec78bc96ee44d"
+}

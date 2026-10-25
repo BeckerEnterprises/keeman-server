@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO idempotency (user_id, key, endpoint, request_hash, status, response, created_at)\n         VALUES (?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "3d065162e12572c7d643696172775cf8801d62c988df327d079af0f74b35f687"
+}

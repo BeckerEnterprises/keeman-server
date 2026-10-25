@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT s.id AS \"id!\" FROM sessions s JOIN users u ON u.id = s.user_id\n           WHERE s.id IN (SELECT value FROM json_each(?))\n             AND s.revoked_at IS NULL AND s.refresh_expires_at > ? AND u.disabled = 0",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "92f95ee122cf8a803b7ea6056c34cd5cd4a6e6b1249d9d6f33b31a1d8c32f07d"
+}

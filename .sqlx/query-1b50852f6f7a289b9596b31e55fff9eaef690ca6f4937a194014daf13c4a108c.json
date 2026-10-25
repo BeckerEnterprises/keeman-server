@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) AS \"count!: i64\" FROM objects o\n           WHERE o.vault_id = ? AND o.deleted = 0\n             AND o.id NOT IN (SELECT value FROM json_each(?))\n             AND NOT EXISTS (SELECT 1 FROM rotation_objects r\n                             WHERE r.rotation_id = ? AND r.id = o.id AND r.type = o.type)",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1b50852f6f7a289b9596b31e55fff9eaef690ca6f4937a194014daf13c4a108c"
+}

@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT revision, key_version, tombstone_horizon FROM vaults WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "revision",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vaults",
+            "name": "revision"
+          }
+        }
+      },
+      {
+        "name": "key_version",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vaults",
+            "name": "key_version"
+          }
+        }
+      },
+      {
+        "name": "tombstone_horizon",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vaults",
+            "name": "tombstone_horizon"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "efad6cea9960fb9eb557ff55fff5d369cbf334ff28a0068e8951998902e7d229"
+}

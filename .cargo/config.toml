@@ -1,0 +1,4 @@
+# Compile-time checked queries use the prepared data in .sqlx/, so
+# building needs no database. After changing a query: make sqlx-prepare.
+[env]
+SQLX_OFFLINE = "true"

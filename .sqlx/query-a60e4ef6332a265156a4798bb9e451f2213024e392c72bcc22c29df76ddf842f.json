@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO objects (vault_id, id, type, revision, key_version, deleted, size, updated_at, updated_by, data)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n         ON CONFLICT (vault_id, id) DO UPDATE SET\n           revision = excluded.revision, key_version = excluded.key_version,\n           deleted = excluded.deleted, size = excluded.size, updated_at = excluded.updated_at,\n           updated_by = excluded.updated_by, data = excluded.data",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "a60e4ef6332a265156a4798bb9e451f2213024e392c72bcc22c29df76ddf842f"
+}

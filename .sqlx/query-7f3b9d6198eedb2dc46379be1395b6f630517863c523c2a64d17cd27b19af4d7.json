@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT vault_id, user_id FROM memberships WHERE sender_id = ? AND state = 'pending'",
+  "describe": {
+    "columns": [
+      {
+        "name": "vault_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "vault_id"
+          }
+        }
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "7f3b9d6198eedb2dc46379be1395b6f630517863c523c2a64d17cd27b19af4d7"
+}

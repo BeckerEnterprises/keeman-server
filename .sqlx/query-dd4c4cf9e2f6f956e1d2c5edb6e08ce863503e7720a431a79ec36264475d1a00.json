@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT vault_id, id AS \"id!\", revision FROM objects\n           WHERE deleted = 1 AND updated_at <= ? ORDER BY vault_id, revision LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "vault_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "vault_id"
+          }
+        }
+      },
+      {
+        "name": "id!",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "revision",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "revision"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "dd4c4cf9e2f6f956e1d2c5edb6e08ce863503e7720a431a79ec36264475d1a00"
+}

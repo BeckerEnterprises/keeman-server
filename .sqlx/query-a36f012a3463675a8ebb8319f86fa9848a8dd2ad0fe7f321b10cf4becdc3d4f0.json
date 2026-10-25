@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT user_id AS \"user_id!\", state FROM memberships WHERE vault_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "name": "state",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "state"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "a36f012a3463675a8ebb8319f86fa9848a8dd2ad0fe7f321b10cf4becdc3d4f0"
+}

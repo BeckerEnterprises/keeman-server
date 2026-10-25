@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", credential_id, passkey FROM webauthn_credentials\n           WHERE user_id = ? ORDER BY created_at, id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webauthn_credentials",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "credential_id",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "webauthn_credentials",
+            "name": "credential_id"
+          }
+        }
+      },
+      {
+        "name": "passkey",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webauthn_credentials",
+            "name": "passkey"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a84c2860a9993f58b3017f133c7d17ee92a8a43b238eb3cc246694e9b42422f5"
+}

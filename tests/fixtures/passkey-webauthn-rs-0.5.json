@@ -1,0 +1,38 @@
+{
+  "counter": 1,
+  "credential_id": "pjqkUb000BmFCj8r88dvGnrQ4Fb1GbBiB_Wq7orKhqA",
+  "description": "A passkey as stored by webauthn-rs 0.5.5 with its test-only P-256 private scalar. Never change this file: it guards the stored format against crate updates.",
+  "passkey": {
+    "cred": {
+      "attestation": {
+        "data": "None",
+        "metadata": "None"
+      },
+      "attestation_format": "none",
+      "backup_eligible": false,
+      "backup_state": false,
+      "counter": 1,
+      "cred": {
+        "key": {
+          "EC_EC2": {
+            "curve": "SECP256R1",
+            "x": "4KEgx1mDn_Bl8-dg_FiCKGApKxGtH8nuC92SRFb4ilQ",
+            "y": "AP-4TMm8gOmjI0avcrZm5nP2gzq8kc_AhSvcCSrW05Q"
+          }
+        },
+        "type_": "ES256"
+      },
+      "cred_id": "pjqkUb000BmFCj8r88dvGnrQ4Fb1GbBiB_Wq7orKhqA",
+      "extensions": {
+        "appid": "NotRequested",
+        "cred_props": "Ignored",
+        "cred_protect": "Ignored",
+        "hmac_create_secret": "NotRequested"
+      },
+      "registration_policy": "required",
+      "transports": null,
+      "user_verified": true
+    }
+  },
+  "private_key_hex": "2ff0450af0540222cbc7ff85ad84d0227808152c0e7c943a4423350a9683af90"
+}

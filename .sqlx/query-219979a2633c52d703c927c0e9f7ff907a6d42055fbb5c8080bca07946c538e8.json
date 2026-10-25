@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM objects WHERE vault_id = ? AND id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "219979a2633c52d703c927c0e9f7ff907a6d42055fbb5c8080bca07946c538e8"
+}

@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT failures, locked_until, updated_at FROM login_throttle WHERE email_hmac = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "failures",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "login_throttle",
+            "name": "failures"
+          }
+        }
+      },
+      {
+        "name": "locked_until",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_throttle",
+            "name": "locked_until"
+          }
+        }
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_throttle",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "083cbf6072256a88ba1238f239d0f6df2621b26256377e2c7b52a8c06498da97"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE challenges SET state = ? WHERE token_hash = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "baca36d6b24054227ff10b396ce9f2c720a6c8dc0f491c0e48d3c65e4d6c70b3"
+}

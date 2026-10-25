@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE attachments SET vault_id = ?, entry_id = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "ae9b2d75637accfcf2b1e8e6f6bf375c3f9e5d2d398fcab69882be7ac593f911"
+}

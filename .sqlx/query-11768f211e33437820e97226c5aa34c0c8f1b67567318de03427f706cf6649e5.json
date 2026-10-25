@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM security_log WHERE ts <= ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "11768f211e33437820e97226c5aa34c0c8f1b67567318de03427f706cf6649e5"
+}

@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", revision, size FROM objects\n           WHERE vault_id = ? AND revision > ? AND (? OR deleted = 0) AND (revision, id) > (?, ?)\n           ORDER BY revision, id LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "revision",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "revision"
+          }
+        }
+      },
+      {
+        "name": "size",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "size"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ab2ef569779fee05e350f2341a29d0f303603fe3153e3513db2cf7e348154882"
+}

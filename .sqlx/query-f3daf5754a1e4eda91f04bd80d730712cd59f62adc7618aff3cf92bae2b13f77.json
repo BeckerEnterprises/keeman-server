@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM challenges WHERE session_id = ? AND purpose = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "f3daf5754a1e4eda91f04bd80d730712cd59f62adc7618aff3cf92bae2b13f77"
+}

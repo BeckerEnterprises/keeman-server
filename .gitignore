@@ -1,0 +1,10 @@
+/target/
+/dev/
+config.toml
+# Cargo settings are not a server configuration.
+!/.cargo/config.toml
+server_secret
+*.sqlite
+*.sqlite-*
+.env
+.env.*

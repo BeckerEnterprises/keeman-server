@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET recovery_auth_hash = ?, user_key_recovery_wrapped = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "79c37c94c22ef4b4ca567c15070f5f475560d387bf87d82bdd1847f221d4ccdb"
+}

@@ -1,0 +1,169 @@
+//! Staged key rotations: objects are collected in
+//! `rotation_objects` and swapped in at the commit with one statement.
+
+use super::Conn;
+
+pub struct Rotation {
+    pub id: String,
+    pub vault_id: String,
+    pub base_revision: i64,
+    pub new_key_version: i64,
+    pub created_by: String,
+    pub expires_at: String,
+}
+
+/// Opens a rotation; an older open rotation of the vault is discarded.
+pub async fn replace(conn: &mut Conn, r: &Rotation) -> Result<(), sqlx::Error> {
+    sqlx::query!("DELETE FROM rotations WHERE vault_id = ?", r.vault_id)
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query!(
+        "INSERT INTO rotations (id, vault_id, base_revision, new_key_version, created_by, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?)",
+        r.id,
+        r.vault_id,
+        r.base_revision,
+        r.new_key_version,
+        r.created_by,
+        r.expires_at
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+pub async fn get(conn: &mut Conn, id: &str) -> Result<Option<Rotation>, sqlx::Error> {
+    sqlx::query_as!(
+        Rotation,
+        r#"SELECT id AS "id!", vault_id, base_revision, new_key_version, created_by, expires_at
+           FROM rotations WHERE id = ?"#,
+        id
+    )
+    .fetch_optional(&mut *conn)
+    .await
+}
+
+/// Stores a re-encrypted object; uploading it again replaces it.
+pub async fn upsert_object(
+    conn: &mut Conn,
+    rotation_id: &str,
+    id: &str,
+    kind: &str,
+    data: &[u8],
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "INSERT INTO rotation_objects (rotation_id, id, type, data) VALUES (?, ?, ?, ?)
+         ON CONFLICT (rotation_id, id) DO UPDATE SET type = excluded.type, data = excluded.data",
+        rotation_id,
+        id,
+        kind,
+        data
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+/// Live objects that are neither dropped (`dropped`, a JSON array of IDs)
+/// nor uploaded with their type.
+pub async fn missing_count(
+    conn: &mut Conn,
+    rotation_id: &str,
+    vault_id: &str,
+    dropped: &str,
+) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT COUNT(*) AS "count!: i64" FROM objects o
+           WHERE o.vault_id = ? AND o.deleted = 0
+             AND o.id NOT IN (SELECT value FROM json_each(?))
+             AND NOT EXISTS (SELECT 1 FROM rotation_objects r
+                             WHERE r.rotation_id = ? AND r.id = o.id AND r.type = o.type)"#,
+        vault_id,
+        dropped,
+        rotation_id
+    )
+    .fetch_one(&mut *conn)
+    .await
+}
+
+pub struct Applied<'a> {
+    pub rotation_id: &'a str,
+    pub vault_id: &'a str,
+    pub revision: i64,
+    pub key_version: i64,
+    pub user_id: &'a str,
+    pub now: &'a str,
+}
+
+/// Swaps in the uploaded objects in one statement, so large vaults never
+/// pass through the memory of the server.
+pub async fn apply_objects(conn: &mut Conn, a: &Applied<'_>) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "UPDATE objects SET
+           data = (SELECT r.data FROM rotation_objects r WHERE r.rotation_id = ? AND r.id = objects.id),
+           size = (SELECT length(r.data) FROM rotation_objects r WHERE r.rotation_id = ? AND r.id = objects.id),
+           key_version = ?, revision = ?, updated_at = ?, updated_by = ?
+         WHERE vault_id = ? AND deleted = 0
+           AND id IN (SELECT id FROM rotation_objects WHERE rotation_id = ?)",
+        a.rotation_id,
+        a.rotation_id,
+        a.key_version,
+        a.revision,
+        a.now,
+        a.user_id,
+        a.vault_id,
+        a.rotation_id
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+/// Removes tombstones up to the base revision and raises the horizon:
+/// they carry the old key version.
+pub async fn purge_tombstones_upto(
+    conn: &mut Conn,
+    vault_id: &str,
+    base_revision: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "DELETE FROM objects WHERE vault_id = ? AND deleted = 1 AND revision <= ?",
+        vault_id,
+        base_revision
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query!(
+        "UPDATE vaults SET tombstone_horizon = MAX(tombstone_horizon, ?) WHERE id = ?",
+        base_revision,
+        vault_id
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+/// New revision and key version; the rotation is no longer required.
+pub async fn set_rotated(
+    conn: &mut Conn,
+    vault_id: &str,
+    revision: i64,
+    key_version: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "UPDATE vaults SET revision = ?, key_version = ?, rotation_required = 0 WHERE id = ?",
+        revision,
+        key_version,
+        vault_id
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+pub async fn delete(conn: &mut Conn, id: &str) -> Result<(), sqlx::Error> {
+    sqlx::query!("DELETE FROM rotations WHERE id = ?", id)
+        .execute(&mut *conn)
+        .await?;
+    Ok(())
+}

@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COALESCE(\n             (SELECT v.created_by FROM vaults v\n              JOIN memberships c ON c.vault_id = v.id AND c.user_id = v.created_by\n              WHERE v.id = ? AND c.role = 'owner' AND c.state = 'active'),\n             (SELECT o.user_id FROM memberships o\n              WHERE o.vault_id = ? AND o.role = 'owner' AND o.state = 'active'\n              ORDER BY o.created_at, o.user_id LIMIT 1)) AS \"account?: String\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "account?: String",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "e6beb1eb9274fc34b352807430d127b0f17676086f7b928e2ce54571a6c1aa65"
+}

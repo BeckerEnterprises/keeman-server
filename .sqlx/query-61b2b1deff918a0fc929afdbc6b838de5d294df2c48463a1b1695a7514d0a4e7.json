@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT vault_id, user_id FROM memberships WHERE pending_key_sender_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "vault_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "vault_id"
+          }
+        }
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "61b2b1deff918a0fc929afdbc6b838de5d294df2c48463a1b1695a7514d0a4e7"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO memberships (vault_id, user_id, role, state, key_version, key_box, sender_id, created_at)\n         VALUES (?, ?, 'member', 'pending', ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "f6cf9a5ea50e3d97693871672ca882c07b74a28e95a42b39668086b7c5cf7cb9"
+}

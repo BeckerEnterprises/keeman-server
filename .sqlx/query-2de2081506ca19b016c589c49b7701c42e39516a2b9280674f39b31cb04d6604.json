@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT token_hash AS hash, purpose, user_id, session_id, state, attempts\n           FROM challenges WHERE token_hash = ? AND expires_at > ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "hash",
+        "ordinal": 0,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "token_hash"
+          }
+        }
+      },
+      {
+        "name": "purpose",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "purpose"
+          }
+        }
+      },
+      {
+        "name": "user_id",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "name": "session_id",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "session_id"
+          }
+        }
+      },
+      {
+        "name": "state",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "name": "attempts",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "attempts"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "2de2081506ca19b016c589c49b7701c42e39516a2b9280674f39b31cb04d6604"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE memberships SET pending_key_box = ?, pending_key_version = ?, pending_key_sender_id = ?\n         WHERE vault_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "26cf9bbd399a15a8ac96af81e81b0fff59743850410ba556ed29282ea69be715"
+}

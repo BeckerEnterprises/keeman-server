@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM memberships WHERE vault_id = ? AND sender_id = ? AND state = 'pending'\n         RETURNING user_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "672a7219e1d0ab08992672cbda780ffb1db6335a3712c8f8121f5b11e4deba6e"
+}

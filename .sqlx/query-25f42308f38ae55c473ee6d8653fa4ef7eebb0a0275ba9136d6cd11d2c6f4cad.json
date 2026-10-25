@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\" FROM sessions WHERE user_id = ? AND id != ? AND revoked_at IS NULL AND refresh_expires_at > ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "25f42308f38ae55c473ee6d8653fa4ef7eebb0a0275ba9136d6cd11d2c6f4cad"
+}

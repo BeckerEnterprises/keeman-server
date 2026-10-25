@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM memberships WHERE vault_id = ? AND state = 'pending'\n           AND user_id NOT IN (SELECT value FROM json_each(?))\n         RETURNING user_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2565befd401ec8af7ab91a7419b533b5bb4e2c828c57172c2739d7cdc2729836"
+}

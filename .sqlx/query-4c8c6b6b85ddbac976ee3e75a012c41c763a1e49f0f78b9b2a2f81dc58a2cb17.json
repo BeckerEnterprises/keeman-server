@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET totp_secret_enc = NULL, totp_enabled = 0, totp_last_step = NULL, updated_at = ?\n           WHERE email = ? RETURNING id AS \"id!\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4c8c6b6b85ddbac976ee3e75a012c41c763a1e49f0f78b9b2a2f81dc58a2cb17"
+}

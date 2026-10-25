@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE vaults SET revision = ?, key_version = ?, rotation_required = 0 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "89e2a21cb8b2ba0b53490ec52c1f53606c5038049ec53e14d831a6d379a84c63"
+}

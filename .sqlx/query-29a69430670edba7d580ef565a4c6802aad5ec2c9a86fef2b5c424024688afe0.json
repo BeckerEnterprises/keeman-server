@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT user_key_recovery_wrapped FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_key_recovery_wrapped",
+        "ordinal": 0,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "user_key_recovery_wrapped"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "29a69430670edba7d580ef565a4c6802aad5ec2c9a86fef2b5c424024688afe0"
+}

@@ -1,0 +1,287 @@
+[
+  {
+    "method": "GET",
+    "path": "/v1/config",
+    "access": "public"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/time",
+    "access": "public"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/health",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/prelogin",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/register",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/login",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/2fa/totp",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/2fa/backup-code",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/2fa/webauthn/options",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/2fa/webauthn/verify",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/refresh",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/logout",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/recover/start",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/recover/finish",
+    "access": "public"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me",
+    "access": "reauth"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/reauth",
+    "access": "token"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/me/user-data",
+    "access": "token"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/me/password",
+    "access": "reauth"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/me/recovery",
+    "access": "reauth"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/totp/setup",
+    "access": "reauth"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/totp/enable",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/totp",
+    "access": "reauth"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/backup-codes",
+    "access": "reauth"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/webauthn/register/options",
+    "access": "reauth"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/webauthn/register/verify",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/webauthn",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/webauthn/{credential_id}",
+    "access": "reauth"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/sessions",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/sessions",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/sessions/{session_id}",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/users/lookup",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/users/{user_id}/public-key",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/vaults",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/vaults/{vault_id}",
+    "access": "reauth"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/accept",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/decline",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/key",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/vaults/{vault_id}/members",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/members",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/vaults/{vault_id}/members/me",
+    "access": "token"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/vaults/{vault_id}/members/{user_id}",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/vaults/{vault_id}/members/{user_id}",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/rotations",
+    "access": "token"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/vaults/{vault_id}/rotations/{rotation_id}/objects",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/rotations/{rotation_id}/commit",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/vaults/{vault_id}/changes",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/batch",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/attachments",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/vaults/{vault_id}/attachments/{attachment_id}",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/vaults/{vault_id}/attachments/{attachment_id}",
+    "access": "token"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/vaults/{vault_id}/attachments/{attachment_id}/parts/{part}",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/attachments/{attachment_id}/complete",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/attachments/{attachment_id}/transfer",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/events",
+    "access": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/favicon",
+    "access": "token"
+  }
+]

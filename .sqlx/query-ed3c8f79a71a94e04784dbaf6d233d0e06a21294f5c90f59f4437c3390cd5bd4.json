@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", code_hash FROM backup_codes WHERE user_id = ? AND used_at IS NULL ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "backup_codes",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "code_hash",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "backup_codes",
+            "name": "code_hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "ed3c8f79a71a94e04784dbaf6d233d0e06a21294f5c90f59f4437c3390cd5bd4"
+}

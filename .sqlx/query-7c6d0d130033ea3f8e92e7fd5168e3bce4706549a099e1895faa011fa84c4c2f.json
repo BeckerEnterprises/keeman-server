@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM memberships WHERE vault_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "7c6d0d130033ea3f8e92e7fd5168e3bce4706549a099e1895faa011fa84c4c2f"
+}

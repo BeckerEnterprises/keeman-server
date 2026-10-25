@@ -1,0 +1,69 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", name, created_at, last_used_at,\n             prf_wrapped_user_key IS NOT NULL AS \"prf_enabled!: bool\"\n           FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at, id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webauthn_credentials",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webauthn_credentials",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webauthn_credentials",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "last_used_at",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webauthn_credentials",
+            "name": "last_used_at"
+          }
+        }
+      },
+      {
+        "name": "prf_enabled!: bool",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "7557a150c6f1d0a9e671defaaaadc91cfd4553ba0074c9748e02cad99807d398"
+}

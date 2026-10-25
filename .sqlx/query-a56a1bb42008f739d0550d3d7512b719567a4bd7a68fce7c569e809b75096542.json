@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO rotation_objects (rotation_id, id, type, data) VALUES (?, ?, ?, ?)\n         ON CONFLICT (rotation_id, id) DO UPDATE SET type = excluded.type, data = excluded.data",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a56a1bb42008f739d0550d3d7512b719567a4bd7a68fce7c569e809b75096542"
+}

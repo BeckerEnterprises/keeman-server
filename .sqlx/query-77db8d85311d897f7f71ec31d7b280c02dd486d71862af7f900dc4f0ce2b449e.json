@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE sessions SET refresh_expires_at = ?, last_seen_at = ?, ip_hint = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "77db8d85311d897f7f71ec31d7b280c02dd486d71862af7f900dc4f0ce2b449e"
+}
