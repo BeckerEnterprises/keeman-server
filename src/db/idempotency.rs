@@ -64,3 +64,30 @@ pub async fn insert(conn: &mut Conn, e: &NewEntry<'_>) -> Result<(), sqlx::Error
     .await?;
     Ok(())
 }
+
+/// Deletes the oldest entries of the account beyond `entries` rows or
+/// `bytes` of stored answers; the newest entry always stays.
+pub async fn trim(
+    conn: &mut Conn,
+    user_id: &str,
+    entries: i64,
+    bytes: i64,
+) -> Result<u64, sqlx::Error> {
+    let done = sqlx::query!(
+        r#"DELETE FROM idempotency WHERE user_id = ? AND key IN (
+             SELECT key FROM (
+               SELECT key,
+                 ROW_NUMBER() OVER newest AS n,
+                 SUM(length(response)) OVER newest AS kept
+               FROM idempotency WHERE user_id = ?
+               WINDOW newest AS (ORDER BY created_at DESC, rowid DESC)
+             ) WHERE n > 1 AND (n > ? OR kept > ?))"#,
+        user_id,
+        user_id,
+        entries,
+        bytes
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(done.rows_affected())
+}

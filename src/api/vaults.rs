@@ -290,7 +290,8 @@ pub async fn create(
     let result = create_in(&mut savepoint, user_id, &body, quota, &now, &ip.hint()).await;
     let answer = idempotency::settle(savepoint, result).await?;
     let created = answer.is_ok();
-    let response = idempotency::store(&mut tx, user_id, &request, &now, answer).await?;
+    let response =
+        idempotency::store(&mut tx, &app.config.limits, user_id, &request, &now, answer).await?;
     tx.commit().await?;
     if created {
         app.hub.publish([user_id], &events::vaults_changed());

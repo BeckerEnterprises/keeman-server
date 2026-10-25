@@ -147,6 +147,11 @@ pub struct LimitsSection {
     pub large_requests_per_account: u32,
     /// Pending invitations are deleted after this many days.
     pub invitation_ttl_days: u32,
+    /// Stored idempotency answers per account; the oldest give way.
+    pub idempotency_entries_per_account: u32,
+    pub idempotency_bytes_per_account: u64,
+    /// Active sessions per account; a new one revokes the least recently used.
+    pub sessions_per_account: u32,
 }
 
 impl Default for LimitsSection {
@@ -158,6 +163,9 @@ impl Default for LimitsSection {
             large_body_budget_bytes: 134_217_728,
             large_requests_per_account: 4,
             invitation_ttl_days: 30,
+            idempotency_entries_per_account: 1000,
+            idempotency_bytes_per_account: 8_388_608,
+            sessions_per_account: 100,
         }
     }
 }
@@ -242,6 +250,10 @@ pub struct LoggingSection {
     pub level: LogLevel,
     pub format: LogFormat,
     pub security_log_retention_days: u32,
+    /// Entries per account, event and day; more are only counted.
+    pub security_log_per_account_per_day: u32,
+    /// The same for events without an account.
+    pub security_log_anonymous_per_day: u32,
 }
 
 impl Default for LoggingSection {
@@ -250,6 +262,8 @@ impl Default for LoggingSection {
             level: LogLevel::Info,
             format: LogFormat::Json,
             security_log_retention_days: 90,
+            security_log_per_account_per_day: 1000,
+            security_log_anonymous_per_day: 10_000,
         }
     }
 }
@@ -352,6 +366,21 @@ impl Config {
         }
         if self.limits.invitation_ttl_days == 0 {
             return err("limits.invitation_ttl_days must be positive");
+        }
+        if self.limits.idempotency_entries_per_account < 10 {
+            return err("limits.idempotency_entries_per_account must be at least 10");
+        }
+        // Larger than any single stored answer, so the newest always fits.
+        if self.limits.idempotency_bytes_per_account < 1_048_576 {
+            return err("limits.idempotency_bytes_per_account must be at least 1 MiB");
+        }
+        if self.limits.sessions_per_account == 0 {
+            return err("limits.sessions_per_account must be positive");
+        }
+        if self.logging.security_log_per_account_per_day == 0
+            || self.logging.security_log_anonymous_per_day == 0
+        {
+            return err("logging.security_log_*_per_day must be positive");
         }
         Ok(())
     }

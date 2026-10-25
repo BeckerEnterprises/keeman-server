@@ -11,6 +11,7 @@ use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 use sqlx::{Sqlite, Transaction};
 
+use crate::config::LimitsSection;
 use crate::crypto::sha256;
 use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode, StoredProblem};
@@ -130,9 +131,11 @@ pub async fn settle<T>(
 }
 
 /// Stores the answer and turns it into the response of this request. A
-/// `204` is stored and answered without a body.
+/// `204` is stored and answered without a body. The oldest answers of the
+/// account give way once it holds more than its budget.
 pub async fn store(
     conn: &mut Conn,
+    limits: &LimitsSection,
     user_id: &str,
     request: &Idempotent,
     now: &str,
@@ -157,6 +160,13 @@ pub async fn store(
         now,
     };
     db::idempotency::insert(conn, &entry).await?;
+    db::idempotency::trim(
+        conn,
+        user_id,
+        i64::from(limits.idempotency_entries_per_account),
+        i64::try_from(limits.idempotency_bytes_per_account).unwrap_or(i64::MAX),
+    )
+    .await?;
     Ok(match answer {
         Ok((StatusCode::NO_CONTENT, _)) => StatusCode::NO_CONTENT.into_response(),
         Ok((status, body)) => (status, Json(body)).into_response(),

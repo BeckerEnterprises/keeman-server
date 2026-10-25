@@ -109,7 +109,8 @@ where
         Ok((done, status, body)) => (Some(done), Ok((status, body))),
         Err(error) => (None, Err(error)),
     };
-    let response = idempotency::store(&mut tx, user_id, request, now, answer).await?;
+    let response =
+        idempotency::store(&mut tx, &app.config.limits, user_id, request, now, answer).await?;
     tx.commit().await?;
     Ok((response, done))
 }

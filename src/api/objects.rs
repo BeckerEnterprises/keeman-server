@@ -431,7 +431,8 @@ pub async fn batch(
         .map(|applied| applied.attachments.clone())
         .unwrap_or_default();
     let answer = answer.map(|applied| (StatusCode::OK, applied.body));
-    let response = idempotency::store(&mut tx, user_id, &request, &now, answer).await?;
+    let response =
+        idempotency::store(&mut tx, &app.config.limits, user_id, &request, &now, answer).await?;
     tx.commit().await?;
     app.storage.remove_logged(&attachments).await;
     if let Some((revision, members)) = event {

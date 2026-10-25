@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM idempotency WHERE user_id = ? AND key IN (\n             SELECT key FROM (\n               SELECT key,\n                 ROW_NUMBER() OVER newest AS n,\n                 SUM(length(response)) OVER newest AS kept\n               FROM idempotency WHERE user_id = ?\n               WINDOW newest AS (ORDER BY created_at DESC, rowid DESC)\n             ) WHERE n > 1 AND (n > ? OR kept > ?))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "05899840ef1a7390b4da60ea231dbaf8c3c7f8d3d04c99cd6f7af78bd82283b4"
+}

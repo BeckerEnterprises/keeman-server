@@ -69,6 +69,9 @@ tombstone_retention_days = 180
 large_body_budget_bytes = 134217728       # bodies of large requests in memory at once
 large_requests_per_account = 4
 invitation_ttl_days = 30                  # pending invitations are deleted after this
+idempotency_entries_per_account = 1000    # stored idempotency answers; the oldest give way
+idempotency_bytes_per_account = 8388608
+sessions_per_account = 100                # a new session revokes the least recently used
 
 [features]
 favicon = true
@@ -93,6 +96,8 @@ invites_per_invitee_per_hour = 30      # invitations received by one account
 level = "info"
 format = "{format}"
 security_log_retention_days = 90
+security_log_per_account_per_day = 1000   # per account, event and day; more are only counted
+security_log_anonymous_per_day = 10000    # events without an account
 "#
     )
 }

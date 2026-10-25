@@ -763,3 +763,104 @@ async fn a_replay_survives_a_lost_membership() {
     let response = t.call(send(&dave, &vault_id, &late, &fresh)).await;
     assert_eq!(response.status, StatusCode::OK, "{}", response.text());
 }
+
+#[tokio::test]
+async fn stored_answers_stay_within_the_budget_of_the_account() {
+    let t = TestApp::with_config(
+        "[limits]\nidempotency_entries_per_account = 10\nidempotency_bytes_per_account = 1048576\n",
+    )
+    .await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    let bobs_vault = t.create_vault(&bob).await;
+    let send = |account: &support::Account, vault: &str, key: &str, body: &Value| {
+        Req::post(&format!("/v1/vaults/{vault}/batch"))
+            .token(&account.access_token)
+            .idem(key)
+            .json(body)
+    };
+    let rows = |user: &str| format!("SELECT COUNT(*) FROM idempotency WHERE user_id = '{user}'");
+
+    // Rows: the oldest give way, the newest replays.
+    let keys: Vec<String> = (0..12).map(|_| new_uuid()).collect();
+    let bodies: Vec<Value> = keys
+        .iter()
+        .map(|_| json!({ "ops": [put_op(&new_uuid(), "entry", None)] }))
+        .collect();
+    for (key, body) in keys.iter().zip(&bodies) {
+        assert_eq!(
+            t.call(send(&alice, &vault_id, key, body)).await.status,
+            StatusCode::OK
+        );
+    }
+    assert_eq!(t.count(&rows(&alice.user_id)).await, 10);
+    let newest = t
+        .call(send(&alice, &vault_id, &keys[11], &bodies[11]))
+        .await;
+    assert_eq!(newest.status, StatusCode::OK);
+    assert_eq!(
+        revision(&t, &vault_id).await,
+        13,
+        "a replay changes nothing"
+    );
+    // An answer that gave way: the batch acts again and conflicts.
+    let evicted = t.call(send(&alice, &vault_id, &keys[0], &bodies[0])).await;
+    assert_eq!(evicted.code(), "conflict");
+
+    // Each account has its own budget.
+    let key = new_uuid();
+    let body = json!({ "ops": [put_op(&new_uuid(), "entry", None)] });
+    t.call(send(&bob, &bobs_vault, &key, &body)).await;
+    assert_eq!(
+        t.count(&rows(&bob.user_id)).await,
+        2,
+        "vault creation and batch"
+    );
+}
+
+#[tokio::test]
+async fn large_stored_answers_give_way_by_size() {
+    let t = TestApp::with_config("[limits]\nidempotency_bytes_per_account = 1048576\n").await;
+    let alice = t.register("alice@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    let send = |key: &str, body: &Value| {
+        Req::post(&format!("/v1/vaults/{vault_id}/batch"))
+            .token(&alice.access_token)
+            .idem(key)
+            .json(body)
+    };
+    // 500 conflicts make an answer of about 43 KB, without any data growing.
+    let conflicts = json!({
+        "ops": (0..500).map(|_| put_op(&new_uuid(), "entry", Some(7))).collect::<Vec<_>>()
+    });
+    let mut last = String::new();
+    for _ in 0..30 {
+        last = new_uuid();
+        assert_eq!(t.call(send(&last, &conflicts)).await.code(), "conflict");
+    }
+    let stored = t
+        .count(&format!(
+            "SELECT SUM(length(response)) FROM idempotency WHERE user_id = '{}'",
+            alice.user_id
+        ))
+        .await;
+    assert!(stored <= 1_048_576, "{stored} bytes stored");
+    assert!(stored > 900_000, "{stored} bytes stored");
+    let rows = t
+        .count(&format!(
+            "SELECT COUNT(*) FROM idempotency WHERE user_id = '{}'",
+            alice.user_id
+        ))
+        .await;
+    assert!(rows < 30, "{rows} rows");
+    assert_eq!(
+        t.count(&format!(
+            "SELECT COUNT(*) FROM idempotency WHERE user_id = '{}' AND key = '{last}'",
+            alice.user_id
+        ))
+        .await,
+        1,
+        "the newest answer stays"
+    );
+}
