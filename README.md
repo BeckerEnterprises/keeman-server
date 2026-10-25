@@ -70,6 +70,8 @@ All commands take `--config <path>` (default `./config.toml`) and refuse to run 
 
 ## Installation
 
+Every [release](https://github.com/BeckerEnterprises/keeman-server/releases) has the binary for Linux x86_64 (glibc 2.34 or newer, OpenSSL 3) together with the systemd units, a container image and the compose example; or build it yourself (see Building). Check downloads with the release's `SHA256SUMS`.
+
 A layout that keeps the service away from everything it does not need:
 
 | Path | Content | Owner | Mode |
@@ -159,7 +161,7 @@ podman compose up -d
 podman compose exec api keeman-server invite create --config /etc/keeman/config.toml
 ```
 
-The same works with Docker (`docker build`, `docker compose`). In the compose file, environment variables set the installation-specific keys (`KEEMAN__SERVER__PUBLIC_API_URL` and so on) over the placeholders `init` writes. Backups: `podman compose exec api keeman-server backup --config /etc/keeman/config.toml --dir /var/backups/keeman`, for example from a timer on the host, then copy the `backups` volume elsewhere.
+Instead of building, load the image of a release: `docker load -i keeman-server-<version>-image-linux-amd64.tar.gz` (or `podman load -i …`) names it `keeman-server:<version>` and `keeman-server:latest`, as the compose file expects; the web client release has its image as well. The same works with Docker (`docker build`, `docker compose`). In the compose file, environment variables set the installation-specific keys (`KEEMAN__SERVER__PUBLIC_API_URL` and so on) over the placeholders `init` writes. Backups: `podman compose exec api keeman-server backup --config /etc/keeman/config.toml --dir /var/backups/keeman`, for example from a timer on the host, then copy the `backups` volume elsewhere.
 
 ## Deployment
 
