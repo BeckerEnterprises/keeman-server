@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::app::App;
-use crate::audit;
+use crate::audit::Audit;
 use crate::auth::{AuthSession, ClientIp, NoQuery, Reauthed};
 use crate::clock::format_timestamp;
 use crate::db::{self, Conn};
@@ -229,6 +229,7 @@ fn check_create(body: &CreateBody) -> ApiResult<()> {
 
 async fn create_in(
     conn: &mut Conn,
+    audit: &Audit,
     user_id: &str,
     body: &CreateBody,
     quota: u64,
@@ -266,7 +267,9 @@ async fn create_in(
         };
         db::objects::upsert(conn, vault_id, &new).await?;
     }
-    audit::vault_event(conn, now, "vault_created", user_id, vault_id, Some(ip_hint)).await?;
+    audit
+        .vault_event(conn, now, "vault_created", user_id, vault_id, Some(ip_hint))
+        .await?;
     Ok((StatusCode::CREATED, json!({ "revision": 1 })))
 }
 
@@ -287,7 +290,16 @@ pub async fn create(
     }
     let mut savepoint = db::savepoint(&mut tx).await?;
     let quota = app.config.limits.user_quota_bytes;
-    let result = create_in(&mut savepoint, user_id, &body, quota, &now, &ip.hint()).await;
+    let result = create_in(
+        &mut savepoint,
+        &app.audit,
+        user_id,
+        &body,
+        quota,
+        &now,
+        &ip.hint(),
+    )
+    .await;
     let answer = idempotency::settle(savepoint, result).await?;
     let created = answer.is_ok();
     let response =
@@ -316,15 +328,16 @@ pub async fn delete(
     let members = db::vaults::members(&mut tx, vault_id).await?;
     let attachments = db::attachments::ids_of_vault(&mut tx, vault_id).await?;
     db::vaults::delete(&mut tx, vault_id).await?;
-    audit::vault_event(
-        &mut tx,
-        &now,
-        "vault_deleted",
-        user_id,
-        vault_id,
-        Some(&ip.hint()),
-    )
-    .await?;
+    app.audit
+        .vault_event(
+            &mut tx,
+            &now,
+            "vault_deleted",
+            user_id,
+            vault_id,
+            Some(&ip.hint()),
+        )
+        .await?;
     tx.commit().await?;
     app.storage.remove_logged(&attachments).await;
     app.hub.publish(

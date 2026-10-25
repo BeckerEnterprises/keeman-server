@@ -7,7 +7,6 @@ use time::Duration;
 use tokio::task::JoinHandle;
 
 use crate::app::App;
-use crate::audit;
 use crate::clock::format_timestamp;
 use crate::db::cleanup::{self, Cutoffs, Removed};
 use crate::db::{attachments, vaults};
@@ -70,15 +69,16 @@ async fn expire_invitations(app: &App, before: &str) -> Result<u64, sqlx::Error>
     let expired = vaults::expire_invitations(&mut tx, before).await?;
     let mut recipients = BTreeSet::new();
     for invitation in &expired {
-        audit::vault_event(
-            &mut tx,
-            &now,
-            "invitation_expired",
-            &invitation.user_id,
-            &invitation.vault_id,
-            None,
-        )
-        .await?;
+        app.audit
+            .vault_event(
+                &mut tx,
+                &now,
+                "invitation_expired",
+                &invitation.user_id,
+                &invitation.vault_id,
+                None,
+            )
+            .await?;
         recipients.insert(invitation.user_id.clone());
         recipients.extend(vaults::active_members(&mut tx, &invitation.vault_id).await?);
     }

@@ -11,7 +11,6 @@ use time::{Duration, OffsetDateTime};
 
 use crate::api::hex;
 use crate::app::App;
-use crate::audit;
 use crate::auth::{session, throttle};
 use crate::clock::format_timestamp;
 use crate::crypto::{new_token, sha256};
@@ -202,15 +201,16 @@ async fn record_failure(
         ip_hint,
     )
     .await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "2fa_failed",
-        Some(&pending.user_id),
-        Some(ip_hint),
-        json!({ "method": method }),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "2fa_failed",
+            Some(&pending.user_id),
+            Some(ip_hint),
+            json!({ "method": method }),
+        )
+        .await?;
     tx.commit().await?;
     Ok(())
 }
@@ -224,15 +224,16 @@ pub async fn disabled(app: &App, pending: &Pending, ip_hint: &str) -> ApiError {
         // A lock that began meanwhile hides the disabled account as well.
         throttle::ensure_unlocked(&mut tx, app, &pending.throttle_key).await?;
         db::challenges::delete(&mut *tx, &pending.hash).await?;
-        audit::log(
-            &mut tx,
-            &now_text,
-            "login_disabled",
-            Some(&pending.user_id),
-            Some(ip_hint),
-            json!({}),
-        )
-        .await?;
+        app.audit
+            .log(
+                &mut tx,
+                &now_text,
+                "login_disabled",
+                Some(&pending.user_id),
+                Some(ip_hint),
+                json!({}),
+            )
+            .await?;
         tx.commit().await?;
         Ok(())
     }
@@ -264,6 +265,7 @@ pub async fn complete(
     if pending.purpose == "recovery" {
         return recovery_payload(
             tx,
+            app,
             &pending.user_id,
             method,
             ip_hint,
@@ -277,15 +279,16 @@ pub async fn complete(
     let now_text = format_timestamp(now);
     let issued = session::create(tx, app, &pending.user_id, &device, ip_hint, now).await?;
     db::users::set_last_login(&mut *tx, &pending.user_id, &now_text).await?;
-    audit::log(
-        tx,
-        &now_text,
-        "login_ok",
-        Some(&pending.user_id),
-        Some(ip_hint),
-        json!({ "session_id": issued.session_id, "method": method }),
-    )
-    .await?;
+    app.audit
+        .log(
+            tx,
+            &now_text,
+            "login_ok",
+            Some(&pending.user_id),
+            Some(ip_hint),
+            json!({ "session_id": issued.session_id, "method": method }),
+        )
+        .await?;
     Ok(session::response_with_remaining(
         app,
         StatusCode::OK,
@@ -311,6 +314,7 @@ struct RecoveryPayload {
 /// `RecoveryPayload`.
 pub async fn recovery_payload(
     tx: &mut Conn,
+    app: &App,
     user_id: &str,
     method: &str,
     ip_hint: &str,
@@ -332,15 +336,16 @@ pub async fn recovery_payload(
     };
     db::challenges::insert(&mut *tx, &challenge).await?;
     let now_text = format_timestamp(now);
-    audit::log(
-        tx,
-        &now_text,
-        "recovery_started",
-        Some(user_id),
-        Some(ip_hint),
-        json!({ "method": method }),
-    )
-    .await?;
+    app.audit
+        .log(
+            tx,
+            &now_text,
+            "recovery_started",
+            Some(user_id),
+            Some(ip_hint),
+            json!({ "method": method }),
+        )
+        .await?;
     let body = RecoveryPayload {
         status: "recovery_ok",
         recovery_token: token.text,

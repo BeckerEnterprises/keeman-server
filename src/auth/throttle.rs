@@ -4,7 +4,6 @@
 use time::{Duration, OffsetDateTime};
 
 use crate::app::App;
-use crate::audit;
 use crate::clock::{format_timestamp, parse_timestamp};
 use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode};
@@ -63,15 +62,16 @@ pub async fn failure(
             now + Duration::minutes(i64::from(app.config.rate_limits.lockout_minutes)),
         );
         db::throttle::upsert(&mut *conn, key, 0, Some(&until), &now_text).await?;
-        audit::log(
-            conn,
-            &now_text,
-            "login_locked",
-            user_id,
-            Some(ip_hint),
-            serde_json::json!({}),
-        )
-        .await?;
+        app.audit
+            .log(
+                conn,
+                &now_text,
+                "login_locked",
+                user_id,
+                Some(ip_hint),
+                serde_json::json!({}),
+            )
+            .await?;
     } else {
         db::throttle::upsert(&mut *conn, key, failures, None, &now_text).await?;
     }

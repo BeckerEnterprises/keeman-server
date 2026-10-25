@@ -14,7 +14,6 @@ use webauthn_rs::prelude::{CredentialID, PasskeyRegistration, RegisterPublicKeyC
 
 use super::two_factor::{codes_for_first_factor, new_backup_codes};
 use crate::app::App;
-use crate::audit;
 use crate::auth::{AuthSession, ClientIp, NoQuery, Reauthed};
 use crate::clock::format_timestamp;
 use crate::crypto::{new_token, sha256};
@@ -176,15 +175,16 @@ pub async fn register_verify(
     };
     db::passkeys::insert(&mut *tx, &new).await?;
     let shown = codes_for_first_factor(&mut tx, user_id, first, codes).await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "passkey_added",
-        Some(user_id),
-        Some(&ip.hint()),
-        json!({ "id": id }),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "passkey_added",
+            Some(user_id),
+            Some(&ip.hint()),
+            json!({ "id": id }),
+        )
+        .await?;
     tx.commit().await?;
     let body = match shown {
         Some(codes) => json!({ "id": id, "backup_codes": codes }),
@@ -273,15 +273,16 @@ pub async fn delete(
     if !has_factor(&mut tx, user_id).await? {
         db::backup_codes::delete_all(&mut *tx, user_id).await?;
     }
-    audit::log(
-        &mut tx,
-        &now_text,
-        "passkey_removed",
-        Some(user_id),
-        Some(&ip.hint()),
-        json!({ "id": credential_id }),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "passkey_removed",
+            Some(user_id),
+            Some(&ip.hint()),
+            json!({ "id": credential_id }),
+        )
+        .await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }

@@ -12,7 +12,6 @@ use serde_json::{Value, json};
 
 use super::vaults::{Need, path_uuid, require, vault_id};
 use crate::app::App;
-use crate::audit;
 use crate::auth::{AuthSession, ClientIp, NoQuery};
 use crate::clock::format_timestamp;
 use crate::db::{self, Conn};
@@ -142,16 +141,17 @@ pub async fn invite(
         now: &now,
     };
     db::vaults::insert_invitation(&mut tx, &invitation).await?;
-    audit::vault_log(
-        &mut tx,
-        &now,
-        "member_invited",
-        user_id,
-        vault_id,
-        Some(&ip.hint()),
-        json!({ "user_id": invitee }),
-    )
-    .await?;
+    app.audit
+        .vault_log(
+            &mut tx,
+            &now,
+            "member_invited",
+            user_id,
+            vault_id,
+            Some(&ip.hint()),
+            json!({ "user_id": invitee }),
+        )
+        .await?;
     let mut recipients = db::vaults::active_members(&mut tx, vault_id).await?;
     recipients.push(invitee.to_string());
     tx.commit().await?;
@@ -181,15 +181,16 @@ pub async fn accept(
         return Err(mismatch(current));
     }
     db::vaults::activate(&mut tx, vault_id, user_id, &body.key_wrapped.0).await?;
-    audit::vault_event(
-        &mut tx,
-        &now,
-        "invitation_accepted",
-        user_id,
-        vault_id,
-        Some(&ip.hint()),
-    )
-    .await?;
+    app.audit
+        .vault_event(
+            &mut tx,
+            &now,
+            "invitation_accepted",
+            user_id,
+            vault_id,
+            Some(&ip.hint()),
+        )
+        .await?;
     let recipients = db::vaults::active_members(&mut tx, vault_id).await?;
     tx.commit().await?;
     notify(&app, &recipients);
@@ -213,15 +214,16 @@ pub async fn decline(
         .filter(|m| m.state == "pending")
         .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;
     db::vaults::delete_membership(&mut tx, vault_id, user_id).await?;
-    audit::vault_event(
-        &mut tx,
-        &now,
-        "invitation_declined",
-        user_id,
-        vault_id,
-        Some(&ip.hint()),
-    )
-    .await?;
+    app.audit
+        .vault_event(
+            &mut tx,
+            &now,
+            "invitation_declined",
+            user_id,
+            vault_id,
+            Some(&ip.hint()),
+        )
+        .await?;
     let mut recipients = db::vaults::active_members(&mut tx, vault_id).await?;
     recipients.push(user_id.to_string());
     tx.commit().await?;
@@ -282,16 +284,17 @@ pub async fn update(
         return Err(ApiError::new(ErrorCode::LastOwner));
     }
     db::vaults::set_role(&mut tx, vault_id, target, role).await?;
-    audit::vault_log(
-        &mut tx,
-        &now,
-        "member_role_changed",
-        user_id,
-        vault_id,
-        Some(&ip.hint()),
-        json!({ "user_id": target, "role": role }),
-    )
-    .await?;
+    app.audit
+        .vault_log(
+            &mut tx,
+            &now,
+            "member_role_changed",
+            user_id,
+            vault_id,
+            Some(&ip.hint()),
+            json!({ "user_id": target, "role": role }),
+        )
+        .await?;
     let recipients = db::vaults::active_members(&mut tx, vault_id).await?;
     tx.commit().await?;
     notify(&app, &recipients);
@@ -319,16 +322,17 @@ pub async fn withdraw(
         return Err(ApiError::new(ErrorCode::UseRotate));
     }
     db::vaults::delete_membership(&mut tx, vault_id, target).await?;
-    audit::vault_log(
-        &mut tx,
-        &now,
-        "invitation_withdrawn",
-        user_id,
-        vault_id,
-        Some(&ip.hint()),
-        json!({ "user_id": target }),
-    )
-    .await?;
+    app.audit
+        .vault_log(
+            &mut tx,
+            &now,
+            "invitation_withdrawn",
+            user_id,
+            vault_id,
+            Some(&ip.hint()),
+            json!({ "user_id": target }),
+        )
+        .await?;
     let mut recipients = db::vaults::active_members(&mut tx, vault_id).await?;
     recipients.push(target.to_string());
     tx.commit().await?;
@@ -362,15 +366,16 @@ pub async fn leave(
     db::vaults::flag_rotation(&mut tx, vault_id).await?;
     let invitees = db::vaults::drop_vault_invitations_from(&mut tx, vault_id, user_id).await?;
     db::vaults::drop_vault_pending_keys_from(&mut tx, vault_id, user_id).await?;
-    audit::vault_event(
-        &mut tx,
-        &now,
-        "member_left",
-        user_id,
-        vault_id,
-        Some(&ip.hint()),
-    )
-    .await?;
+    app.audit
+        .vault_event(
+            &mut tx,
+            &now,
+            "member_left",
+            user_id,
+            vault_id,
+            Some(&ip.hint()),
+        )
+        .await?;
     let mut recipients = db::vaults::active_members(&mut tx, vault_id).await?;
     recipients.extend(invitees);
     recipients.push(user_id.to_string());

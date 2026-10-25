@@ -13,7 +13,7 @@ use time::Duration;
 
 use super::vaults::{MAX_OBJECTS, Need, path_uuid, precheck, require, vault_id};
 use crate::app::App;
-use crate::audit;
+use crate::audit::Audit;
 use crate::auth::{AuthSession, ClientIp, NoQuery};
 use crate::clock::format_timestamp;
 use crate::db::{self, Conn};
@@ -394,6 +394,7 @@ struct CommitContext<'a> {
     now: &'a str,
     ip_hint: &'a str,
     quota: u64,
+    audit: &'a Audit,
 }
 
 async fn commit_in(
@@ -408,6 +409,7 @@ async fn commit_in(
         now,
         ip_hint,
         quota,
+        audit,
     } = *context;
     require(conn, vault_id, user_id, Need::Owner).await?;
     let rotation = rotation(conn, rotation_id, vault_id, user_id, now).await?;
@@ -555,16 +557,17 @@ async fn commit_in(
     db::rotations::delete(conn, rotation_id).await?;
     let mut removed_ids: Vec<&str> = removed.iter().copied().collect();
     removed_ids.sort_unstable();
-    audit::vault_log(
-        conn,
-        now,
-        "vault_rotated",
-        user_id,
-        vault_id,
-        Some(ip_hint),
-        json!({ "key_version": key_version, "removed": removed_ids, "dropped": dropped.len() }),
-    )
-    .await?;
+    audit
+        .vault_log(
+            conn,
+            now,
+            "vault_rotated",
+            user_id,
+            vault_id,
+            Some(ip_hint),
+            json!({ "key_version": key_version, "removed": removed_ids, "dropped": dropped.len() }),
+        )
+        .await?;
 
     let members = db::vaults::active_members(conn, vault_id).await?;
     let mut affected: Vec<String> = members.clone();
@@ -618,6 +621,7 @@ pub async fn commit(
                 now: &now,
                 ip_hint: &ip_hint,
                 quota,
+                audit: &app.audit,
             },
         )
         .await

@@ -8,7 +8,6 @@ use axum::http::{StatusCode, Uri};
 use serde_json::{Value, json};
 
 use crate::app::App;
-use crate::audit;
 use crate::auth::{AuthSession, ClientIp, NoQuery};
 use crate::clock::format_timestamp;
 use crate::db;
@@ -61,15 +60,16 @@ pub async fn revoke_others(
     let revoked =
         db::sessions::revoke_others(&mut tx, &session.user_id, &session.session_id, &now_text)
             .await?;
-    audit::sessions_revoked(
-        &mut tx,
-        &now_text,
-        &session.user_id,
-        Some(&ip.hint()),
-        &revoked,
-        "others",
-    )
-    .await?;
+    app.audit
+        .sessions_revoked(
+            &mut tx,
+            &now_text,
+            &session.user_id,
+            Some(&ip.hint()),
+            &revoked,
+            "others",
+        )
+        .await?;
     tx.commit().await?;
     app.hub.revoke_sessions(&revoked);
     Ok(StatusCode::NO_CONTENT)
@@ -93,15 +93,16 @@ pub async fn revoke(
         return Err(ApiError::new(ErrorCode::NotFound));
     }
     db::sessions::revoke(&mut tx, &session_id, &now_text).await?;
-    audit::sessions_revoked(
-        &mut tx,
-        &now_text,
-        &session.user_id,
-        Some(&ip.hint()),
-        std::slice::from_ref(&session_id),
-        "user",
-    )
-    .await?;
+    app.audit
+        .sessions_revoked(
+            &mut tx,
+            &now_text,
+            &session.user_id,
+            Some(&ip.hint()),
+            std::slice::from_ref(&session_id),
+            "user",
+        )
+        .await?;
     tx.commit().await?;
     app.hub.revoke_sessions(std::slice::from_ref(&session_id));
     Ok(StatusCode::NO_CONTENT)

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE security_log\n           SET detail = json_set(detail, '$.suppressed', json_extract(detail, '$.suppressed') + 1)\n           WHERE id = (SELECT id FROM security_log\n                       WHERE user_id IS ? AND event = 'log_capped' AND ts >= ?\n                         AND json_extract(detail, '$.event') = ?\n                       LIMIT 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "6af4f6743d8016233c197361b26f36d8a65ee9cbdabc35385c46e01f12348bd9"
+}

@@ -195,10 +195,15 @@ async fn register_invite_rules() {
         StatusCode::BAD_REQUEST
     );
 
-    let expired =
-        keeman_server::cli::invite::create(&t.app.db, t.now(), Duration::minutes(1), None)
-            .await
-            .unwrap();
+    let expired = keeman_server::cli::invite::create(
+        &t.app.db,
+        &t.app.audit,
+        t.now(),
+        Duration::minutes(1),
+        None,
+    )
+    .await
+    .unwrap();
     t.advance(Duration::minutes(1));
     let response = register_raw(&t, &account.register_body(Some(&expired))).await;
     assert_eq!(response.code(), "invite_invalid", "expired code");

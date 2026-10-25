@@ -14,7 +14,6 @@ use time::Duration;
 
 use super::{RecoveryMaterial, hex, kdf_json, parse_kdf};
 use crate::app::App;
-use crate::audit;
 use crate::auth::session::with_cookie;
 use crate::auth::{AuthSession, ClientIp, NoQuery, Reauthed, throttle};
 use crate::clock::format_timestamp;
@@ -105,15 +104,16 @@ pub async fn reauth(
             .is_some_and(|current| current.auth_hash == user.auth_hash);
     if !valid {
         throttle::failure(&mut tx, &app, &key, Some(&user.id), &hint).await?;
-        audit::log(
-            &mut tx,
-            &now_text,
-            "reauth_failed",
-            Some(&user.id),
-            Some(&hint),
-            json!({ "session_id": session.session_id }),
-        )
-        .await?;
+        app.audit
+            .log(
+                &mut tx,
+                &now_text,
+                "reauth_failed",
+                Some(&user.id),
+                Some(&hint),
+                json!({ "session_id": session.session_id }),
+            )
+            .await?;
         tx.commit().await?;
         // The session stays valid; clients tell this apart by `code`.
         return Err(ApiError::new(ErrorCode::InvalidCredentials));
@@ -215,25 +215,27 @@ pub async fn put_password(
     } else {
         Vec::new()
     };
-    audit::sessions_revoked(
-        &mut tx,
-        &now_text,
-        user_id,
-        Some(&hint),
-        &revoked,
-        "password",
-    )
-    .await?;
+    app.audit
+        .sessions_revoked(
+            &mut tx,
+            &now_text,
+            user_id,
+            Some(&hint),
+            &revoked,
+            "password",
+        )
+        .await?;
     let detail = json!({ "revoke_other_sessions": body.revoke_other_sessions, "revoked_sessions": revoked.len() });
-    audit::log(
-        &mut tx,
-        &now_text,
-        "password_changed",
-        Some(user_id),
-        Some(&hint),
-        detail,
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "password_changed",
+            Some(user_id),
+            Some(&hint),
+            detail,
+        )
+        .await?;
     tx.commit().await?;
     app.hub.revoke_sessions(&revoked);
     Ok(StatusCode::NO_CONTENT)
@@ -260,15 +262,16 @@ pub async fn put_recovery(
     .await?;
     // A recovery begun with the old key must not finish after the change.
     db::challenges::delete_recovery_steps(&mut *tx, &session.user_id).await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "recovery_changed",
-        Some(&session.user_id),
-        Some(&ip.hint()),
-        json!({}),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "recovery_changed",
+            Some(&session.user_id),
+            Some(&ip.hint()),
+            json!({}),
+        )
+        .await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -294,15 +297,16 @@ pub async fn delete(
         notify.extend(db::vaults::members(&mut tx, &vault_id).await?);
         attachments.extend(db::attachments::ids_of_vault(&mut tx, &vault_id).await?);
         db::vaults::delete(&mut tx, &vault_id).await?;
-        audit::vault_event(
-            &mut tx,
-            &now_text,
-            "vault_deleted",
-            user_id,
-            &vault_id,
-            Some(&ip.hint()),
-        )
-        .await?;
+        app.audit
+            .vault_event(
+                &mut tx,
+                &now_text,
+                "vault_deleted",
+                user_id,
+                &vault_id,
+                Some(&ip.hint()),
+            )
+            .await?;
     }
     for vault_id in db::vaults::active_vaults(&mut tx, user_id).await? {
         notify.extend(db::vaults::active_members(&mut tx, &vault_id).await?);
@@ -315,15 +319,16 @@ pub async fn delete(
         notify.insert(grant.user_id);
     }
     db::users::delete(&mut *tx, user_id).await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "account_deleted",
-        Some(user_id),
-        Some(&ip.hint()),
-        json!({}),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "account_deleted",
+            Some(user_id),
+            Some(&ip.hint()),
+            json!({}),
+        )
+        .await?;
     tx.commit().await?;
     app.storage.remove_logged(&attachments).await;
     notify.remove(user_id);

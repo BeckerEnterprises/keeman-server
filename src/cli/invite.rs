@@ -4,7 +4,7 @@ use serde_json::json;
 use time::{Duration, OffsetDateTime};
 
 use super::CliResult;
-use crate::audit;
+use crate::audit::Audit;
 use crate::clock::format_timestamp;
 use crate::crypto::new_token;
 use crate::db::{self, Db};
@@ -33,6 +33,7 @@ pub fn parse_expires(text: &str) -> CliResult<Duration> {
 /// Creates an invite and returns its code; only the hash is stored.
 pub async fn create(
     db: &Db,
+    audit: &Audit,
     now: OffsetDateTime,
     expires: Duration,
     note: Option<&str>,
@@ -56,27 +57,29 @@ pub async fn create(
     )
     .await
     .map_err(|e| e.to_string())?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "invite_created",
-        None,
-        None,
-        json!({ "invite_id": id }),
-    )
-    .await
-    .map_err(|e| e.to_string())?;
+    audit
+        .log(
+            &mut tx,
+            &now_text,
+            "invite_created",
+            None,
+            None,
+            json!({ "invite_id": id }),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
     tx.commit().await.map_err(|e| e.to_string())?;
     Ok(code.text)
 }
 
 pub async fn create_command(
     db: &Db,
+    audit: &Audit,
     now: OffsetDateTime,
     expires: &str,
     note: Option<&str>,
 ) -> CliResult<()> {
-    let code = create(db, now, parse_expires(expires)?, note).await?;
+    let code = create(db, audit, now, parse_expires(expires)?, note).await?;
     println!("{code}");
     Ok(())
 }
@@ -108,7 +111,7 @@ pub async fn list_command(db: &Db, now: OffsetDateTime) -> CliResult<()> {
 }
 
 /// Deletes an unused invite; used ones stay for auditing.
-pub async fn revoke(db: &Db, now: OffsetDateTime, id: &str) -> CliResult<()> {
+pub async fn revoke(db: &Db, audit: &Audit, now: OffsetDateTime, id: &str) -> CliResult<()> {
     let mut tx = db.begin().await.map_err(|e| e.to_string())?;
     if db::invites::revoke_unused(&mut *tx, id)
         .await
@@ -117,16 +120,17 @@ pub async fn revoke(db: &Db, now: OffsetDateTime, id: &str) -> CliResult<()> {
     {
         return Err(format!("no unused invite with ID {id}"));
     }
-    audit::log(
-        &mut tx,
-        &format_timestamp(now),
-        "invite_revoked",
-        None,
-        None,
-        json!({ "invite_id": id }),
-    )
-    .await
-    .map_err(|e| e.to_string())?;
+    audit
+        .log(
+            &mut tx,
+            &format_timestamp(now),
+            "invite_revoked",
+            None,
+            None,
+            json!({ "invite_id": id }),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
     tx.commit().await.map_err(|e| e.to_string())?;
     println!("revoked invite {id}");
     Ok(())

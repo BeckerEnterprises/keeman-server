@@ -11,7 +11,6 @@ use serde_json::{Value, json};
 use time::Duration;
 
 use crate::app::App;
-use crate::audit;
 use crate::auth::second_factor::{Factors, MAX_ATTEMPTS};
 use crate::auth::{AuthSession, ClientIp, NoQuery, Reauthed, backup_codes};
 use crate::clock::format_timestamp;
@@ -159,15 +158,16 @@ pub async fn totp_enable(
     }
     db::users::enable_totp(&mut *tx, user_id, &sealed, step, &now_text).await?;
     let shown = codes_for_first_factor(&mut tx, user_id, !current.any(), codes).await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "totp_enabled",
-        Some(user_id),
-        Some(&ip.hint()),
-        json!({}),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "totp_enabled",
+            Some(user_id),
+            Some(&ip.hint()),
+            json!({}),
+        )
+        .await?;
     tx.commit().await?;
     Ok(Json(match shown {
         Some(codes) => json!({ "backup_codes": codes }),
@@ -192,15 +192,16 @@ pub async fn totp_disable(
     if !factors(&mut tx, user_id).await?.any() {
         db::backup_codes::delete_all(&mut *tx, user_id).await?;
     }
-    audit::log(
-        &mut tx,
-        &now_text,
-        "totp_disabled",
-        Some(user_id),
-        Some(&ip.hint()),
-        json!({}),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "totp_disabled",
+            Some(user_id),
+            Some(&ip.hint()),
+            json!({}),
+        )
+        .await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -226,15 +227,16 @@ pub async fn regenerate_backup_codes(
         return Err(state_invalid());
     }
     db::backup_codes::replace(&mut tx, user_id, &hashes).await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "backup_codes_regenerated",
-        Some(user_id),
-        Some(&ip.hint()),
-        json!({}),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "backup_codes_regenerated",
+            Some(user_id),
+            Some(&ip.hint()),
+            json!({}),
+        )
+        .await?;
     tx.commit().await?;
     Ok(Json(json!({ "backup_codes": codes })))
 }

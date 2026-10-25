@@ -145,9 +145,15 @@ impl TestApp {
 
     /// Creates an invite code like `keeman-server invite create`.
     pub async fn invite(&self) -> String {
-        keeman_server::cli::invite::create(&self.app.db, self.now(), Duration::days(7), None)
-            .await
-            .unwrap()
+        keeman_server::cli::invite::create(
+            &self.app.db,
+            &self.app.audit,
+            self.now(),
+            Duration::days(7),
+            None,
+        )
+        .await
+        .unwrap()
     }
 
     /// Registers a native (`cli`) account with a fresh invite from its own IP.

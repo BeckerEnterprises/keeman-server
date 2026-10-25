@@ -400,9 +400,15 @@ async fn cleanup_job_removes_expired_rows() {
     wrong["email"] = json!("nobody@example.com");
     t.call(Req::post("/v1/auth/login").json(&wrong).peer(&unique_ip()))
         .await;
-    keeman_server::cli::invite::create(&t.app.db, t.now(), Duration::minutes(1), None)
-        .await
-        .unwrap();
+    keeman_server::cli::invite::create(
+        &t.app.db,
+        &t.app.audit,
+        t.now(),
+        Duration::minutes(1),
+        None,
+    )
+    .await
+    .unwrap();
     let job = || keeman_server::jobs::cleanup(&t.app);
 
     t.advance(Duration::minutes(20));

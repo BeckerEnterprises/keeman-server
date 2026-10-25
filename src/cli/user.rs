@@ -4,7 +4,7 @@ use serde_json::json;
 use time::OffsetDateTime;
 
 use super::CliResult;
-use crate::audit;
+use crate::audit::Audit;
 use crate::clock::format_timestamp;
 use crate::db::{self, Db};
 use crate::types::normalize_email;
@@ -38,6 +38,7 @@ pub async fn list_command(db: &Db) -> CliResult<()> {
 /// directions can be repeated.
 pub async fn set_disabled(
     db: &Db,
+    audit: &Audit,
     now: OffsetDateTime,
     email: &str,
     disabled: bool,
@@ -58,7 +59,8 @@ pub async fn set_disabled(
         db::challenges::delete_all_for_user(&mut *tx, &user_id)
             .await
             .map_err(|e| e.to_string())?;
-        audit::sessions_revoked(&mut tx, &now_text, &user_id, None, &revoked, "admin")
+        audit
+            .sessions_revoked(&mut tx, &now_text, &user_id, None, &revoked, "admin")
             .await
             .map_err(|e| e.to_string())?;
     }
@@ -67,7 +69,8 @@ pub async fn set_disabled(
     } else {
         "user_enabled"
     };
-    audit::log(&mut tx, &now_text, event, Some(&user_id), None, json!({}))
+    audit
+        .log(&mut tx, &now_text, event, Some(&user_id), None, json!({}))
         .await
         .map_err(|e| e.to_string())?;
     tx.commit().await.map_err(|e| e.to_string())?;
@@ -82,7 +85,12 @@ pub async fn set_disabled(
 /// Removes TOTP, passkeys, backup codes and open second-factor steps; the
 /// data stays protected by the master password, sessions stay.
 /// Can be repeated.
-pub async fn reset_two_factor(db: &Db, now: OffsetDateTime, email: &str) -> CliResult<()> {
+pub async fn reset_two_factor(
+    db: &Db,
+    audit: &Audit,
+    now: OffsetDateTime,
+    email: &str,
+) -> CliResult<()> {
     let email = normalize_email(email);
     let now_text = format_timestamp(now);
     let mut tx = db.begin().await.map_err(|e| e.to_string())?;
@@ -92,16 +100,17 @@ pub async fn reset_two_factor(db: &Db, now: OffsetDateTime, email: &str) -> CliR
     else {
         return Err("no account with this e-mail address".into());
     };
-    audit::log(
-        &mut tx,
-        &now_text,
-        "two_factor_reset",
-        Some(&user_id),
-        None,
-        json!({}),
-    )
-    .await
-    .map_err(|e| e.to_string())?;
+    audit
+        .log(
+            &mut tx,
+            &now_text,
+            "two_factor_reset",
+            Some(&user_id),
+            None,
+            json!({}),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
     tx.commit().await.map_err(|e| e.to_string())?;
     println!("second factor removed for {email}");
     Ok(())

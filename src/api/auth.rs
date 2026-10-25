@@ -12,7 +12,6 @@ use time::Duration;
 
 use super::{RecoveryMaterial, hex, kdf_json, parse_kdf};
 use crate::app::App;
-use crate::audit;
 use crate::auth::origin::{self, Origin};
 use crate::auth::second_factor::{self, Factors};
 use crate::auth::session::{self, issue_access, issue_refresh, with_cookie};
@@ -131,15 +130,16 @@ pub async fn register(
         return Err(ApiError::new(ErrorCode::InviteInvalid));
     }
     let issued = session::create(&mut tx, &app, user_id, &body.device, &hint, now).await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "register",
-        Some(user_id),
-        Some(&hint),
-        json!({ "session_id": issued.session_id }),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "register",
+            Some(user_id),
+            Some(&hint),
+            json!({ "session_id": issued.session_id }),
+        )
+        .await?;
     tx.commit().await?;
     Ok(session::response(
         &app,
@@ -262,30 +262,32 @@ pub async fn login(
         None => {
             let user_id = user.as_ref().map(|u| u.id.as_str());
             throttle::failure(&mut tx, &app, &key, user_id, &hint).await?;
-            audit::log(
-                &mut tx,
-                &now_text,
-                "login_failed",
-                user_id,
-                Some(&hint),
-                json!({}),
-            )
-            .await?;
+            app.audit
+                .log(
+                    &mut tx,
+                    &now_text,
+                    "login_failed",
+                    user_id,
+                    Some(&hint),
+                    json!({}),
+                )
+                .await?;
             tx.commit().await?;
             return Err(ApiError::new(ErrorCode::InvalidCredentials));
         }
     };
     // Neither a failure nor a reset: only a complete login resets.
     if user.disabled {
-        audit::log(
-            &mut tx,
-            &now_text,
-            "login_disabled",
-            Some(&user.id),
-            Some(&hint),
-            json!({}),
-        )
-        .await?;
+        app.audit
+            .log(
+                &mut tx,
+                &now_text,
+                "login_disabled",
+                Some(&user.id),
+                Some(&hint),
+                json!({}),
+            )
+            .await?;
         tx.commit().await?;
         return Err(ApiError::new(ErrorCode::AccountDisabled));
     }
@@ -306,15 +308,16 @@ pub async fn login(
     throttle::success(&mut tx, &app, &key).await?;
     let issued = session::create(&mut tx, &app, &user.id, &body.device, &hint, now).await?;
     db::users::set_last_login(&mut *tx, &user.id, &now_text).await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "login_ok",
-        Some(&user.id),
-        Some(&hint),
-        json!({ "session_id": issued.session_id, "method": "password" }),
-    )
-    .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "login_ok",
+            Some(&user.id),
+            Some(&hint),
+            json!({ "session_id": issued.session_id, "method": "password" }),
+        )
+        .await?;
     tx.commit().await?;
     Ok(session::response(
         &app,
@@ -397,24 +400,26 @@ pub async fn refresh(
         // Reuse of an old token: the session is considered stolen.
         let hint = ip.hint();
         db::sessions::revoke(&mut tx, &row.session_id, &now_text).await?;
-        audit::log(
-            &mut tx,
-            &now_text,
-            "refresh_reuse",
-            Some(&row.user_id),
-            Some(&hint),
-            json!({ "session_id": row.session_id }),
-        )
-        .await?;
-        audit::sessions_revoked(
-            &mut tx,
-            &now_text,
-            &row.user_id,
-            Some(&hint),
-            std::slice::from_ref(&row.session_id),
-            "reuse",
-        )
-        .await?;
+        app.audit
+            .log(
+                &mut tx,
+                &now_text,
+                "refresh_reuse",
+                Some(&row.user_id),
+                Some(&hint),
+                json!({ "session_id": row.session_id }),
+            )
+            .await?;
+        app.audit
+            .sessions_revoked(
+                &mut tx,
+                &now_text,
+                &row.user_id,
+                Some(&hint),
+                std::slice::from_ref(&row.session_id),
+                "reuse",
+            )
+            .await?;
         tx.commit().await?;
         app.hub
             .revoke_sessions(std::slice::from_ref(&row.session_id));
@@ -461,15 +466,16 @@ pub async fn logout(
     let mut tx = app.db.begin().await?;
     db::sessions::revoke(&mut tx, &session.session_id, &now_text).await?;
     let ids = std::slice::from_ref(&session.session_id);
-    audit::sessions_revoked(
-        &mut tx,
-        &now_text,
-        &session.user_id,
-        Some(&ip.hint()),
-        ids,
-        "logout",
-    )
-    .await?;
+    app.audit
+        .sessions_revoked(
+            &mut tx,
+            &now_text,
+            &session.user_id,
+            Some(&ip.hint()),
+            ids,
+            "logout",
+        )
+        .await?;
     tx.commit().await?;
     app.hub.revoke_sessions(ids);
     let mut response = StatusCode::NO_CONTENT.into_response();

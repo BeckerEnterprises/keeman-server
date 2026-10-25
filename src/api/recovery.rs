@@ -11,7 +11,6 @@ use serde_json::json;
 
 use super::{RecoveryMaterial, hex, kdf_json};
 use crate::app::App;
-use crate::audit;
 use crate::auth::second_factor::{self, Factors};
 use crate::auth::{ClientIp, NoQuery, session, throttle};
 use crate::clock::format_timestamp;
@@ -78,29 +77,31 @@ pub async fn start(
         None => {
             let user_id = user.as_ref().map(|u| u.id.as_str());
             throttle::failure(&mut tx, &app, &key, user_id, &hint).await?;
-            audit::log(
-                &mut tx,
-                &now_text,
-                "recovery_failed",
-                user_id,
-                Some(&hint),
-                json!({}),
-            )
-            .await?;
+            app.audit
+                .log(
+                    &mut tx,
+                    &now_text,
+                    "recovery_failed",
+                    user_id,
+                    Some(&hint),
+                    json!({}),
+                )
+                .await?;
             tx.commit().await?;
             return Err(ApiError::new(ErrorCode::InvalidCredentials));
         }
     };
     if user.disabled {
-        audit::log(
-            &mut tx,
-            &now_text,
-            "login_disabled",
-            Some(&user.id),
-            Some(&hint),
-            json!({ "recovery": true }),
-        )
-        .await?;
+        app.audit
+            .log(
+                &mut tx,
+                &now_text,
+                "login_disabled",
+                Some(&user.id),
+                Some(&hint),
+                json!({ "recovery": true }),
+            )
+            .await?;
         tx.commit().await?;
         return Err(ApiError::new(ErrorCode::AccountDisabled));
     }
@@ -114,7 +115,8 @@ pub async fn start(
         second_factor::issue(&mut tx, "recovery", &user.id, factors, None, now).await?
     } else {
         throttle::success(&mut tx, &app, &key).await?;
-        second_factor::recovery_payload(&mut tx, &user.id, "recovery_key", &hint, now, None).await?
+        second_factor::recovery_payload(&mut tx, &app, &user.id, "recovery_key", &hint, now, None)
+            .await?
     };
     tx.commit().await?;
     Ok(response)
@@ -208,28 +210,30 @@ pub async fn finish(
     let revoked = db::sessions::revoke_all(&mut tx, &user_id, &now_text).await?;
     let issued = session::create(&mut tx, &app, &user_id, &body.device, &hint, now).await?;
     db::users::set_last_login(&mut *tx, &user_id, &now_text).await?;
-    audit::sessions_revoked(
-        &mut tx,
-        &now_text,
-        &user_id,
-        Some(&hint),
-        &revoked,
-        "recovery",
-    )
-    .await?;
-    audit::log(
-        &mut tx,
-        &now_text,
-        "recovery_completed",
-        Some(&user_id),
-        Some(&hint),
-        json!({
-            "revoked_sessions": revoked.len(),
-            "recovery_key_replaced": body.recovery.is_some(),
-            "session_id": issued.session_id,
-        }),
-    )
-    .await?;
+    app.audit
+        .sessions_revoked(
+            &mut tx,
+            &now_text,
+            &user_id,
+            Some(&hint),
+            &revoked,
+            "recovery",
+        )
+        .await?;
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "recovery_completed",
+            Some(&user_id),
+            Some(&hint),
+            json!({
+                "revoked_sessions": revoked.len(),
+                "recovery_key_replaced": body.recovery.is_some(),
+                "session_id": issued.session_id,
+            }),
+        )
+        .await?;
     tx.commit().await?;
     app.hub.revoke_sessions(&revoked);
     Ok(session::response(

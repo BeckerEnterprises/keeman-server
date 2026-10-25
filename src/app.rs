@@ -24,6 +24,7 @@ use tower_http::timeout::TimeoutLayer;
 use webauthn_rs::Webauthn;
 
 use crate::api;
+use crate::audit::Audit;
 use crate::auth::middleware::{client_id, gate};
 use crate::auth::password::Passwords;
 use crate::auth::webauthn::relying_party;
@@ -43,6 +44,8 @@ use crate::storage::attachments::Storage;
 pub struct App {
     pub config: Config,
     pub db: Db,
+    /// The security log with its caps.
+    pub audit: Audit,
     pub clock: SharedClock,
     pub keys: DerivedKeys,
     pub passwords: Passwords,
@@ -102,6 +105,7 @@ impl App {
             .map_err(|e| format!("cannot create attachment directories: {e}"))?;
         let webauthn = relying_party(&config.webauthn)?;
         Ok(Arc::new(App {
+            audit: Audit::new(&config.logging),
             keys: DerivedKeys::derive(secret),
             passwords: Passwords::new()?,
             limiter: RateLimiter::new(clock.clone()),

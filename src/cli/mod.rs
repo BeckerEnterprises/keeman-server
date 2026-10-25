@@ -15,6 +15,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
+use crate::audit::Audit;
 use crate::config::Config;
 use crate::crypto::ServerSecret;
 use crate::db::Db;
@@ -176,30 +177,32 @@ fn execute(cli: Cli) -> CliResult<()> {
             }
             Command::Invite(command) => {
                 let db = open_db(&loaded.config).await?;
+                let audit = Audit::new(&loaded.config.logging);
                 let now = time::OffsetDateTime::now_utc();
                 let result = match command {
                     InviteCommand::Create { expires, note } => {
-                        invite::create_command(&db, now, &expires, note.as_deref()).await
+                        invite::create_command(&db, &audit, now, &expires, note.as_deref()).await
                     }
                     InviteCommand::List => invite::list_command(&db, now).await,
-                    InviteCommand::Revoke { id } => invite::revoke(&db, now, &id).await,
+                    InviteCommand::Revoke { id } => invite::revoke(&db, &audit, now, &id).await,
                 };
                 db.close().await;
                 result
             }
             Command::User(command) => {
                 let db = open_db(&loaded.config).await?;
+                let audit = Audit::new(&loaded.config.logging);
                 let now = time::OffsetDateTime::now_utc();
                 let result = match command {
                     UserCommand::List => user::list_command(&db).await,
                     UserCommand::Disable { email } => {
-                        user::set_disabled(&db, now, &email, true).await
+                        user::set_disabled(&db, &audit, now, &email, true).await
                     }
                     UserCommand::Enable { email } => {
-                        user::set_disabled(&db, now, &email, false).await
+                        user::set_disabled(&db, &audit, now, &email, false).await
                     }
                     UserCommand::ResetTwoFactor { email } => {
-                        user::reset_two_factor(&db, now, &email).await
+                        user::reset_two_factor(&db, &audit, now, &email).await
                     }
                 };
                 db.close().await;
