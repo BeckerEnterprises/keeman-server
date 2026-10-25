@@ -245,6 +245,14 @@ fn refuses_to_start_with_unsafe_configuration() {
         assert!(!dir.path().join("data/keeman.sqlite").exists(), "{name}");
     }
 
+    // An existing database readable by others.
+    let (dir, _) = initialised();
+    assert!(run(dir.path(), &["migrate"]).status.success());
+    chmod(&dir.path().join("data/keeman.sqlite"), 0o644);
+    let output = run(dir.path(), &["migrate"]);
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("database"), "{}", stderr(&output));
+
     // Secret as file and environment variable at once.
     let (dir, _) = initialised();
     let output = binary(dir.path(), &["migrate"])
