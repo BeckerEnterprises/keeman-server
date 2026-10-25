@@ -132,7 +132,11 @@ impl Favicons {
         .await;
         let candidates = match page {
             Ok(page) if is_html(page.content_type.as_deref()) => {
-                html::candidates(&String::from_utf8_lossy(&page.body), &page.url, &root)
+                let root = root.clone();
+                blocking(move || {
+                    html::candidates(&String::from_utf8_lossy(&page.body), &page.url, &root)
+                })
+                .await?
             }
             _ => {
                 let mut urls = Vec::new();
@@ -153,12 +157,20 @@ impl Favicons {
             else {
                 continue;
             };
-            if let Some(png) = image::icon(&image.body) {
+            let body = image.body;
+            if let Some(png) = blocking(move || image::icon(&body)).await.flatten() {
                 return Some(png);
             }
         }
         None
     }
+}
+
+/// Parsing HTML and decoding and scaling images take CPU time: they run on
+/// the blocking pool so they never stall the async workers. A panic there
+/// counts as no result.
+async fn blocking<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> Option<T> {
+    tokio::task::spawn_blocking(work).await.ok()
 }
 
 fn is_html(content_type: Option<&str>) -> bool {
