@@ -10,7 +10,7 @@ use axum::response::Response;
 use serde::{Deserialize, Deserializer};
 use serde_json::{Value, json};
 
-use super::vaults::{MAX_OBJECTS, Need, require, vault_id};
+use super::vaults::{MAX_OBJECTS, Need, precheck, require, vault_id};
 use crate::app::App;
 use crate::auth::AuthSession;
 use crate::clock::format_timestamp;
@@ -404,6 +404,12 @@ pub async fn batch(
 ) -> ApiResult<Response> {
     let vault_id = vault_id(&path)?.to_string();
     parse_query(uri.query(), &[])?;
+    let user = session.user_id.as_str();
+    precheck(&app, &request, &vault_id, user, Need::Member, true).await?;
+    let _admitted = app
+        .large_bodies
+        .admit(user, request.headers(), LARGE_BODY_LIMIT)
+        .await?;
     let (request, body): (_, BatchBody) = idempotency::read(request, LARGE_BODY_LIMIT).await?;
     check_batch(&vault_id, &body.ops)?;
     let now = format_timestamp(app.now());

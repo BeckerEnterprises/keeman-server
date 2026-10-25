@@ -716,3 +716,50 @@ async fn idempotency_records_expire_after_a_day() {
     assert_eq!(response.status, StatusCode::CONFLICT);
     assert_eq!(response.code(), "conflict");
 }
+
+#[tokio::test]
+async fn a_replay_survives_a_lost_membership() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let dave = t.register("dave@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    let other = t.create_vault(&alice).await;
+    t.share(&alice, &vault_id, &bob).await;
+    let send = |account: &Account, vault: &str, key: &str, body: &Value| {
+        Req::post(&format!("/v1/vaults/{vault}/batch"))
+            .token(&account.access_token)
+            .idem(key)
+            .json(body)
+    };
+    let key = new_uuid();
+    let body = json!({ "ops": [put_op(&new_uuid(), "entry", None)] });
+    let first = t.call(send(&bob, &vault_id, &key, &body)).await;
+    assert_eq!(first.status, StatusCode::OK);
+    t.sql(&format!(
+        "DELETE FROM memberships WHERE user_id = '{}'",
+        bob.user_id
+    ))
+    .await;
+
+    // The stored answer is still returned to the former member.
+    let again = t.call(send(&bob, &vault_id, &key, &body)).await;
+    assert_eq!((again.status, again.json()), (first.status, first.json()));
+    let changed = json!({ "ops": [put_op(&new_uuid(), "entry", None)] });
+    let response = t.call(send(&bob, &vault_id, &key, &changed)).await;
+    assert_eq!(response.code(), "idempotency_key_reused");
+    // A new key, or the key on another endpoint, gets the pre-check's 404.
+    let response = t.call(send(&bob, &vault_id, &new_uuid(), &body)).await;
+    assert_eq!(response.code(), "not_found");
+    let response = t.call(send(&bob, &other, &key, &body)).await;
+    assert_eq!(response.code(), "not_found");
+
+    // Answers of the pre-check are not stored under the key.
+    let late = new_uuid();
+    let fresh = json!({ "ops": [put_op(&new_uuid(), "entry", None)] });
+    let response = t.call(send(&dave, &vault_id, &late, &fresh)).await;
+    assert_eq!(response.code(), "not_found");
+    t.add_member(&vault_id, &dave, "member", "active").await;
+    let response = t.call(send(&dave, &vault_id, &late, &fresh)).await;
+    assert_eq!(response.status, StatusCode::OK, "{}", response.text());
+}

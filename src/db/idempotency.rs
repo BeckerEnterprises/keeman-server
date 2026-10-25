@@ -23,6 +23,21 @@ pub async fn find(
     .await
 }
 
+/// The endpoint of an answer stored under this key, if any.
+pub async fn stored_endpoint(
+    conn: &mut Conn,
+    user_id: &str,
+    key: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    sqlx::query_scalar!(
+        "SELECT endpoint FROM idempotency WHERE user_id = ? AND key = ?",
+        user_id,
+        key
+    )
+    .fetch_optional(&mut *conn)
+    .await
+}
+
 pub struct NewEntry<'a> {
     pub user_id: &'a str,
     pub key: &'a str,

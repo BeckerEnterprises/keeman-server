@@ -11,7 +11,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use time::Duration;
 
-use super::vaults::{MAX_OBJECTS, Need, path_uuid, require, vault_id};
+use super::vaults::{MAX_OBJECTS, Need, path_uuid, precheck, require, vault_id};
 use crate::app::App;
 use crate::audit;
 use crate::auth::{AuthSession, ClientIp, NoQuery};
@@ -294,6 +294,12 @@ pub async fn upload(
 ) -> ApiResult<Response> {
     let vault_id = vault_id(&vault)?.to_string();
     let rotation_id = path_uuid("rotation_id", &rotation)?.to_string();
+    let user = session.user_id.as_str();
+    precheck(&app, &request, &vault_id, user, Need::Owner, true).await?;
+    let _admitted = app
+        .large_bodies
+        .admit(user, request.headers(), LARGE_BODY_LIMIT)
+        .await?;
     let (request, body): (_, ObjectsBody) = idempotency::read(request, LARGE_BODY_LIMIT).await?;
     check_objects(&body.objects)?;
     let now = format_timestamp(app.now());
@@ -382,16 +388,26 @@ struct Committed {
     attachments: Vec<String>,
 }
 
+/// What a commit needs besides its target and body.
+struct CommitContext<'a> {
+    now: &'a str,
+    ip_hint: &'a str,
+    quota: u64,
+}
+
 async fn commit_in(
     conn: &mut Conn,
     user_id: &str,
     vault_id: &str,
     rotation_id: &str,
     body: &CommitBody,
-    quota: u64,
-    now: &str,
-    ip_hint: &str,
+    context: &CommitContext<'_>,
 ) -> ApiResult<(Committed, StatusCode, Value)> {
+    let CommitContext {
+        now,
+        ip_hint,
+        quota,
+    } = *context;
     require(conn, vault_id, user_id, Need::Owner).await?;
     let rotation = rotation(conn, rotation_id, vault_id, user_id, now).await?;
     let vault = db::vaults::vault(conn, vault_id)
@@ -578,6 +594,12 @@ pub async fn commit(
 ) -> ApiResult<Response> {
     let vault_id = vault_id(&vault)?.to_string();
     let rotation_id = path_uuid("rotation_id", &rotation)?.to_string();
+    let user = session.user_id.as_str();
+    precheck(&app, &request, &vault_id, user, Need::Owner, true).await?;
+    let _admitted = app
+        .large_bodies
+        .admit(user, request.headers(), LARGE_BODY_LIMIT)
+        .await?;
     let (request, body): (_, CommitBody) = idempotency::read(request, LARGE_BODY_LIMIT).await?;
     let user_id = session.user_id.as_str();
     check_commit(&vault_id, user_id, &body)?;
@@ -591,9 +613,11 @@ pub async fn commit(
             &vault_id,
             &rotation_id,
             &body,
-            quota,
-            &now,
-            &ip_hint,
+            &CommitContext {
+                now: &now,
+                ip_hint: &ip_hint,
+                quota,
+            },
         )
         .await
     };

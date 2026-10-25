@@ -165,7 +165,7 @@ pub async fn put_part(
     let vault_id = vault_id(&vault)?;
     let id = attachment_id(&attachment)?;
     let part = part_index(&part)?;
-    let bytes = octet_stream(request, PART_BODY_LIMIT).await?;
+    // Everything that does not need the body comes before reading it.
     let mut conn = app.db.read.acquire().await?;
     require(&mut conn, vault_id, &session.user_id, Need::Member).await?;
     let attachment = in_vault(&mut conn, id, vault_id).await?;
@@ -177,6 +177,11 @@ pub async fn put_part(
     if part >= parts {
         return Err(ApiError::parameter("part", "no such part"));
     }
+    let _admitted = app
+        .large_bodies
+        .admit(&session.user_id, request.headers(), PART_BODY_LIMIT)
+        .await?;
+    let bytes = octet_stream(request, PART_BODY_LIMIT).await?;
     if bytes.len() as u64 != part_len(size, parts, part) {
         return Err(ApiError::pointer("", "wrong part size"));
     }

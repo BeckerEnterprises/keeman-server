@@ -17,6 +17,7 @@ pub mod events;
 pub mod extract;
 pub mod favicon;
 pub mod idempotency;
+pub mod inflight;
 pub mod jobs;
 pub mod logging;
 pub mod quota;

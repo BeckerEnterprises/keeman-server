@@ -130,24 +130,13 @@ impl TestApp {
         self.clock.now()
     }
 
-    pub async fn send(&self, mut request: Request<Body>) -> TestResponse {
-        if request
-            .extensions()
-            .get::<ConnectInfo<SocketAddr>>()
-            .is_none()
-        {
-            let peer: SocketAddr = format!("{PEER}:40000").parse().unwrap();
-            request.extensions_mut().insert(ConnectInfo(peer));
-        }
-        let response = self.router.clone().oneshot(request).await.unwrap();
-        let status = response.status();
-        let headers = response.headers().clone();
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        TestResponse {
-            status,
-            headers,
-            body,
-        }
+    pub async fn send(&self, request: Request<Body>) -> TestResponse {
+        send_to(self.router.clone(), request).await
+    }
+
+    /// Runs a request in the background, e.g. one with a stalled body.
+    pub fn spawn(&self, request: Request<Body>) -> tokio::task::JoinHandle<TestResponse> {
+        tokio::spawn(send_to(self.router.clone(), request))
     }
 
     pub async fn call(&self, request: Req) -> TestResponse {
@@ -664,6 +653,20 @@ impl Req {
         self
     }
 
+    /// The request with a body that arrives only through the returned
+    /// sender; dropping the sender ends it.
+    pub fn build_streaming(mut self) -> (Request<Body>, tokio::sync::mpsc::Sender<Bytes>) {
+        let (sender, receiver) = tokio::sync::mpsc::channel::<Bytes>(4);
+        let stream = futures_util::stream::unfold(receiver, |mut receiver| async move {
+            let chunk = receiver.recv().await?;
+            Some((Ok::<Bytes, std::io::Error>(chunk), receiver))
+        });
+        self.body = None;
+        let mut request = self.build();
+        *request.body_mut() = Body::from_stream(stream);
+        (request, sender)
+    }
+
     pub fn build(self) -> Request<Body> {
         let mut builder = Request::builder().method(self.method).uri(self.path);
         if self.client {
@@ -680,6 +683,26 @@ impl Req {
             request.extensions_mut().insert(ConnectInfo(peer));
         }
         request
+    }
+}
+
+async fn send_to(router: axum::Router, mut request: Request<Body>) -> TestResponse {
+    if request
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .is_none()
+    {
+        let peer: SocketAddr = format!("{PEER}:40000").parse().unwrap();
+        request.extensions_mut().insert(ConnectInfo(peer));
+    }
+    let response = router.oneshot(request).await.unwrap();
+    let status = response.status();
+    let headers = response.headers().clone();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    TestResponse {
+        status,
+        headers,
+        body,
     }
 }
 

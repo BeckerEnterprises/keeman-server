@@ -38,13 +38,60 @@ pub enum Need {
 /// Unknown vault or not a member → `404`; pending → `403`; owner-only
 /// action as a member → `403`.
 pub async fn require(conn: &mut Conn, vault_id: &str, user_id: &str, need: Need) -> ApiResult<()> {
-    let membership = db::vaults::membership(conn, vault_id, user_id)
-        .await?
-        .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;
-    if membership.state != "active" || (need == Need::Owner && membership.role != "owner") {
-        return Err(ApiError::new(ErrorCode::Forbidden));
+    let membership = db::vaults::membership(conn, vault_id, user_id).await?;
+    refusal(membership.as_ref(), need).map_or(Ok(()), Err)
+}
+
+fn refusal(membership: Option<&db::vaults::Membership>, need: Need) -> Option<ApiError> {
+    match membership {
+        None => Some(ApiError::new(ErrorCode::NotFound)),
+        Some(m) if m.state != "active" || (need == Need::Owner && m.role != "owner") => {
+            Some(ApiError::new(ErrorCode::Forbidden))
+        }
+        Some(_) => None,
     }
-    Ok(())
+}
+
+/// [`require`] before a large body is read, outside the transaction: callers
+/// without the membership are refused before their body is accepted. A key
+/// with an answer already stored for the same endpoint skips it, so the
+/// repetition still gets that answer; the check in the transaction stays.
+pub fn precheck<'a>(
+    app: &'a App,
+    request: &Request,
+    vault_id: &'a str,
+    user_id: &'a str,
+    need: Need,
+    idempotent: bool,
+) -> impl Future<Output = ApiResult<()>> + Send + 'a {
+    // Taken from the request now: its body must not be held across `await`.
+    let stored_answer = if idempotent {
+        idempotency::key(request.headers()).map(|key| (key, idempotency::endpoint(request)))
+    } else {
+        None
+    };
+    precheck_with(app, vault_id, user_id, need, stored_answer)
+}
+
+async fn precheck_with(
+    app: &App,
+    vault_id: &str,
+    user_id: &str,
+    need: Need,
+    stored_answer: Option<(String, String)>,
+) -> ApiResult<()> {
+    let mut conn = app.db.read.acquire().await?;
+    let membership = db::vaults::membership(&mut conn, vault_id, user_id).await?;
+    let Some(refused) = refusal(membership.as_ref(), need) else {
+        return Ok(());
+    };
+    if let Some((key, endpoint)) = stored_answer {
+        let stored = db::idempotency::stored_endpoint(&mut conn, user_id, &key).await?;
+        if stored.is_some_and(|stored| stored == endpoint) {
+            return Ok(());
+        }
+    }
+    Err(refused)
 }
 
 /// A UUID path segment in canonical form, else `400` naming the parameter.

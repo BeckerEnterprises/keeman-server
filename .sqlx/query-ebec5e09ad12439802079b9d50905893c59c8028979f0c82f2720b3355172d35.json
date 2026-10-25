@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT endpoint FROM idempotency WHERE user_id = ? AND key = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "endpoint",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idempotency",
+            "name": "endpoint"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ebec5e09ad12439802079b9d50905893c59c8028979f0c82f2720b3355172d35"
+}

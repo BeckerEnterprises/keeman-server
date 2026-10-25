@@ -5,7 +5,7 @@
 
 use axum::Json;
 use axum::extract::Request;
-use axum::http::{HeaderValue, StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
@@ -27,22 +27,32 @@ pub struct Idempotent {
     pub hash: [u8; 32],
 }
 
-/// Reads an idempotent JSON request: `415` → `413` → `Idempotency-Key` →
-/// structure.
-pub async fn read<T: DeserializeOwned>(
-    request: Request,
-    limit: usize,
-) -> ApiResult<(Idempotent, T)> {
-    let endpoint = format!("{} {}", request.method(), request.uri().path());
-    let mut values = request.headers().get_all(HEADER).iter();
-    let key = match (values.next(), values.next()) {
+/// Method and concrete path, as stored with the answer.
+pub fn endpoint(request: &Request) -> String {
+    format!("{} {}", request.method(), request.uri().path())
+}
+
+/// The key of exactly one valid `Idempotency-Key` header.
+pub fn key(headers: &HeaderMap) -> Option<String> {
+    let mut values = headers.get_all(HEADER).iter();
+    match (values.next(), values.next()) {
         (Some(value), None) => value
             .to_str()
             .ok()
             .filter(|v| is_canonical_uuid(v))
             .map(str::to_string),
         _ => None,
-    };
+    }
+}
+
+/// Reads an idempotent JSON request: `415` → `413` → `Idempotency-Key` →
+/// structure.
+pub async fn read<T: DeserializeOwned>(
+    request: Request,
+    limit: usize,
+) -> ApiResult<(Idempotent, T)> {
+    let endpoint = endpoint(&request);
+    let key = key(request.headers());
     let bytes = json_bytes(request, limit).await?;
     let key = key.ok_or_else(|| {
         ApiError::parameter("Idempotency-Key", "missing or invalid idempotency key")

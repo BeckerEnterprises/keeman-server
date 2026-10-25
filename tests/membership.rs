@@ -2,7 +2,8 @@
 //! as an outsider (`404`), as a pending member (`403`, except accepting and
 //! declining) and owner-only operations as a member (`403`). All requests are
 //! otherwise valid and name existing objects, so only the membership check
-//! can refuse them; none of them changes anything.
+//! can refuse them; none of them changes anything. Large-body operations
+//! check membership before they read the body.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod support;
@@ -263,4 +264,121 @@ async fn every_vault_operation_checks_membership_and_role() {
     assert_eq!(download.status, StatusCode::OK);
     assert_eq!(t.count("SELECT COUNT(*) FROM rotations").await, 1);
     assert_eq!(t.count("SELECT COUNT(*) FROM attachments").await, 1);
+}
+
+/// Large-body operations check membership before reading the body: a
+/// non-member's malformed request gets `404`/`403`, not `415`/`400`/`413`.
+#[tokio::test]
+async fn large_bodies_are_not_read_for_non_members() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let carol = t.register("carol@example.com").await;
+    let dave = t.register("dave@example.com").await;
+    let vault = t.create_vault(&alice).await;
+    t.share(&alice, &vault, &bob).await;
+    t.invite_member(&alice, &vault, &carol).await;
+    let upload = new_uuid();
+    let response = t
+        .call(
+            Req::post(&format!("/v1/vaults/{vault}/attachments"))
+                .token(&alice.access_token)
+                .json(&json!({ "attachment_id": upload, "entry_id": new_uuid(), "size": 100 })),
+        )
+        .await;
+    assert_eq!(response.status, StatusCode::CREATED);
+    let revision = t.listed(&alice, &vault).await.unwrap()["revision"]
+        .as_i64()
+        .unwrap();
+    let response = t
+        .call(
+            Req::post(&format!("/v1/vaults/{vault}/rotations"))
+                .token(&alice.access_token)
+                .idem(&new_uuid())
+                .json(&json!({ "base_revision": revision, "new_key_version": 2 })),
+        )
+        .await;
+    let rotation = response.json()["rotation_id"].as_str().unwrap().to_string();
+    let too_large = vec![b' '; 16 * 1024 * 1024 + 1];
+    let part_too_large = vec![0u8; 8 * 1024 * 1024 + 64 * 1024 + 1];
+
+    // (owner only, request, the owner's answer)
+    let requests = |caller: &Account| {
+        let token = caller.access_token.as_str();
+        let json_ops = [
+            ("POST", format!("/v1/vaults/{vault}/batch"), false),
+            (
+                "PUT",
+                format!("/v1/vaults/{vault}/rotations/{rotation}/objects"),
+                true,
+            ),
+            (
+                "POST",
+                format!("/v1/vaults/{vault}/rotations/{rotation}/commit"),
+                true,
+            ),
+        ];
+        let mut all = Vec::new();
+        for (method, path, owner_only) in json_ops {
+            all.push((
+                owner_only,
+                Req::new(method, &path)
+                    .token(token)
+                    .idem(&new_uuid())
+                    .raw(Some("text/plain"), b"{}"),
+                "unsupported_media_type",
+            ));
+            all.push((
+                owner_only,
+                Req::new(method, &path).token(token).json(&json!({})),
+                "validation_failed",
+            ));
+            all.push((
+                owner_only,
+                Req::new(method, &path)
+                    .token(token)
+                    .idem(&new_uuid())
+                    .raw(Some("application/json"), &too_large),
+                "payload_too_large",
+            ));
+        }
+        let part = format!("/v1/vaults/{vault}/attachments/{upload}/parts/0");
+        all.push((
+            false,
+            Req::put(&part)
+                .token(token)
+                .raw(Some("application/json"), &[0; 100]),
+            "unsupported_media_type",
+        ));
+        all.push((
+            false,
+            Req::put(&part)
+                .token(token)
+                .raw(Some("application/octet-stream"), &part_too_large),
+            "payload_too_large",
+        ));
+        all
+    };
+    for (_, request, _) in requests(&dave) {
+        assert_eq!(t.call(request).await.code(), "not_found");
+    }
+    for (_, request, _) in requests(&carol) {
+        assert_eq!(t.call(request).await.code(), "forbidden");
+    }
+    for (owner_only, request, expected) in requests(&bob) {
+        let code = t.call(request).await.code();
+        assert_eq!(code, if owner_only { "forbidden" } else { expected });
+    }
+    for (_, request, expected) in requests(&alice) {
+        assert_eq!(t.call(request).await.code(), expected);
+    }
+    // Small-body operations are unchanged: the body checks come first.
+    let response = t
+        .call(
+            Req::post(&format!("/v1/vaults/{vault}/members"))
+                .token(&dave.access_token)
+                .raw(Some("text/plain"), b"{}"),
+        )
+        .await;
+    assert_eq!(response.code(), "unsupported_media_type");
 }
