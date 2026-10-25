@@ -469,3 +469,121 @@ async fn the_recovery_payload_resets_the_lockout_counter() {
         .await;
     assert_eq!(response.status, StatusCode::OK, "only one failure since");
 }
+
+/// A login challenge and a recovery challenge of an account with TOTP.
+async fn open_steps(t: &TestApp, account: &Account) -> (String, String) {
+    let login = t.login_challenge(account).await;
+    let response = start_raw(t, &account.email, &account.recovery_auth_key).await;
+    assert_eq!(response.json()["status"], "second_factor_required");
+    let recovery = response.json()["challenge_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    (login, recovery)
+}
+
+async fn totp_step(t: &TestApp, challenge: &str, code: &str) -> support::TestResponse {
+    t.call(
+        Req::post("/v1/auth/2fa/totp")
+            .json(&json!({ "challenge_token": challenge, "code": code }))
+            .peer(&unique_ip()),
+    )
+    .await
+}
+
+async fn change_password(t: &TestApp, account: &Account) {
+    let reauth = t.reauth(account).await;
+    let body = json!({
+        "kdf": { "alg": "argon2id13", "ops": 3, "mem": 67108864 },
+        "salt": random_b64::<16>(),
+        "auth_key": random_b64::<32>(),
+        "user_key_wrapped": envelope(73),
+        "revoke_other_sessions": false,
+    });
+    let response = t
+        .call(
+            Req::put("/v1/me/password")
+                .token(&account.access_token)
+                .reauth(&reauth)
+                .json(&body),
+        )
+        .await;
+    assert_eq!(response.status, StatusCode::NO_CONTENT);
+}
+
+async fn change_recovery_key(t: &TestApp, account: &Account) {
+    let reauth = t.reauth(account).await;
+    let body = json!({ "auth_key": random_b64::<32>(), "user_key_wrapped": envelope(73) });
+    let response = t
+        .call(
+            Req::put("/v1/me/recovery")
+                .token(&account.access_token)
+                .reauth(&reauth)
+                .json(&body),
+        )
+        .await;
+    assert_eq!(response.status, StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn a_password_change_ends_open_sign_in_and_recovery_steps() {
+    let t = test_app().await;
+    let alice = t.register("alice@example.com").await;
+    let secret = t.enable_totp_direct(&alice).await;
+    let (login, recovery) = open_steps(&t, &alice).await;
+    let bob = t.register("bob@example.com").await;
+    let token = recovery_token(&t, &bob).await;
+    // The session's own TOTP setup is not a step begun with the old password.
+    let reauth = t.reauth(&bob).await;
+    let response = t
+        .call(
+            Req::post("/v1/me/totp/setup")
+                .token(&bob.access_token)
+                .reauth(&reauth),
+        )
+        .await;
+    assert_eq!(response.status, StatusCode::OK);
+
+    change_password(&t, &alice).await;
+    change_password(&t, &bob).await;
+    let code = t.totp(&secret, 0);
+    assert_eq!(
+        totp_step(&t, &login, &code).await.code(),
+        "challenge_invalid"
+    );
+    assert_eq!(
+        totp_step(&t, &recovery, &code).await.code(),
+        "challenge_invalid"
+    );
+    let finish = finish_raw(&t, &finish_body(&token, &random_b64::<32>(), None)).await;
+    assert_eq!(finish.code(), "challenge_invalid");
+    assert_eq!(
+        t.count("SELECT COUNT(*) FROM challenges WHERE purpose = 'totp_setup'")
+            .await,
+        1
+    );
+}
+
+#[tokio::test]
+async fn a_new_recovery_key_ends_open_recoveries() {
+    let t = test_app().await;
+    let alice = t.register("alice@example.com").await;
+    let secret = t.enable_totp_direct(&alice).await;
+    let (login, recovery) = open_steps(&t, &alice).await;
+    let bob = t.register("bob@example.com").await;
+    let token = recovery_token(&t, &bob).await;
+
+    change_recovery_key(&t, &alice).await;
+    change_recovery_key(&t, &bob).await;
+    let finish = finish_raw(&t, &finish_body(&token, &random_b64::<32>(), None)).await;
+    assert_eq!(finish.code(), "challenge_invalid");
+    let code = t.totp(&secret, 0);
+    assert_eq!(
+        totp_step(&t, &recovery, &code).await.code(),
+        "challenge_invalid"
+    );
+    // Sign-in steps survive a new recovery key.
+    let response = totp_step(&t, &login, &code).await;
+    assert_eq!(response.status, StatusCode::OK, "{}", response.text());
+    assert_eq!(response.json()["status"], "ok");
+}

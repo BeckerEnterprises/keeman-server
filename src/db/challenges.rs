@@ -168,6 +168,36 @@ pub async fn delete_for_session<'e>(
     Ok(())
 }
 
+/// Steps begun with the old password: reauth tokens and open sign-in and
+/// recovery steps (password change).
+pub async fn delete_password_steps<'e>(
+    ex: impl SqliteExecutor<'e>,
+    user_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "DELETE FROM challenges WHERE user_id = ?
+           AND purpose IN ('reauth', 'login', 'recovery', 'recovery_finish')",
+        user_id
+    )
+    .execute(ex)
+    .await?;
+    Ok(())
+}
+
+/// Recovery steps begun with the old recovery key (new recovery key).
+pub async fn delete_recovery_steps<'e>(
+    ex: impl SqliteExecutor<'e>,
+    user_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "DELETE FROM challenges WHERE user_id = ? AND purpose IN ('recovery', 'recovery_finish')",
+        user_id
+    )
+    .execute(ex)
+    .await?;
+    Ok(())
+}
+
 /// Open second-factor steps of an account (`user reset-2fa`).
 pub async fn delete_two_factor_steps<'e>(
     ex: impl SqliteExecutor<'e>,

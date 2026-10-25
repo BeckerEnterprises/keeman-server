@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM challenges WHERE user_id = ?\n           AND purpose IN ('reauth', 'login', 'recovery', 'recovery_finish')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "dded4ce2693fc62bc29df71f78753a2a39f3854a28b531f55a20dff40845d7e5"
+}

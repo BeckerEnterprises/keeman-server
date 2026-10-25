@@ -200,8 +200,9 @@ pub async fn put_password(
         &now_text,
     )
     .await?;
-    // All reauth tokens of the account, including the one just used.
-    db::challenges::delete_for_user(&mut *tx, user_id, "reauth").await?;
+    // All reauth tokens of the account, including the one just used, and
+    // sign-in and recovery steps begun with the old password.
+    db::challenges::delete_password_steps(&mut *tx, user_id).await?;
     let revoked = if body.revoke_other_sessions {
         db::sessions::revoke_others(&mut tx, user_id, &session.session_id, &now_text).await?
     } else {
@@ -250,6 +251,8 @@ pub async fn put_recovery(
         &now_text,
     )
     .await?;
+    // A recovery begun with the old key must not finish after the change.
+    db::challenges::delete_recovery_steps(&mut *tx, &session.user_id).await?;
     audit::log(
         &mut tx,
         &now_text,
