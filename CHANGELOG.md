@@ -11,6 +11,11 @@ All notable changes to this project are documented here. The format follows [Kee
 - Vault membership and role are checked before large request bodies are read (batch, key rotation, attachment parts). A response already stored for the same idempotency key and endpoint is still replayed.
 - New rate limit per account across all sessions (`rate_limits.account_per_min`, default 1200 per minute).
 - Large request bodies share a memory budget (`limits.large_body_budget_bytes`, default 128 MiB, requests wait in arrival order), and one account runs at most `limits.large_requests_per_account` (default 4) of them at once; one more gets `429` with `Retry-After: 1`.
+- Inviting is limited to 30 invitations per hour per inviting account and 30 per hour per invited account (`rate_limits.invites_per_account_per_hour`, `rate_limits.invites_per_invitee_per_hour`), on top of the general limits. Pending invitations expire after `limits.invitation_ttl_days` (default 30); the cleanup job deletes them, logs `invitation_expired` and tells the affected accounts.
+- Attachment parts are stored only after a write transaction has checked the membership again, and completing an upload checks it in its transaction: a member removed while a part was still arriving can no longer store it.
+- Every WebSocket send has a time limit of 10 seconds, so a client that stops reading no longer keeps its connection and slot forever.
+- Favicon pages and images are parsed, decoded and scaled on the blocking thread pool instead of the async workers.
+- The compose example trusts only the proxy's fixed address to set the client IP; before, any container in a private network could fake it for the rate limits.
 
 ### Changed
 
