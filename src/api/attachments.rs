@@ -185,11 +185,38 @@ pub async fn put_part(
     if bytes.len() as u64 != part_len(size, parts, part) {
         return Err(ApiError::pointer("", "wrong part size"));
     }
-    app.storage
-        .write_part(id, part, &bytes)
+    let temp = app
+        .storage
+        .stage_part(id, part, &bytes)
         .await
         .map_err(ApiError::internal)?;
+    // Reading the body takes time: what counts is the membership when the
+    // part is put in place, under the write lock that removals take too.
+    let mut tx = app.db.begin().await?;
+    if let Err(error) = still_uploading(&mut tx, vault_id, &session.user_id, id).await {
+        app.storage.discard(&temp).await;
+        return Err(error);
+    }
+    if let Err(error) = app.storage.place_part(&temp, id, part).await {
+        app.storage.discard(&temp).await;
+        return Err(ApiError::internal(error));
+    }
+    tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// The caller is still a member and the upload still takes parts.
+async fn still_uploading(
+    conn: &mut Conn,
+    vault_id: &str,
+    user_id: &str,
+    id: &str,
+) -> ApiResult<()> {
+    require(conn, vault_id, user_id, Need::Member).await?;
+    if in_vault(conn, id, vault_id).await?.complete() {
+        return Err(ApiError::new(ErrorCode::Conflict));
+    }
+    Ok(())
 }
 
 pub async fn complete(
@@ -226,6 +253,11 @@ pub async fn complete(
         .map_err(ApiError::internal)?;
     let now = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
+    // The membership may have ended while the parts were assembled.
+    if let Err(error) = require(&mut tx, vault_id, &session.user_id, Need::Member).await {
+        app.storage.discard(&temp).await;
+        return Err(error);
+    }
     let current = db::attachments::get(&mut tx, id)
         .await?
         .filter(|a| a.vault_id == vault_id);

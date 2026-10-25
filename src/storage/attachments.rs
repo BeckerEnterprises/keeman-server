@@ -112,7 +112,9 @@ impl Storage {
     }
 
     /// Stores a part; a part uploaded again replaces the old one atomically.
-    pub async fn write_part(&self, id: &str, part: u64, bytes: &[u8]) -> io::Result<()> {
+    /// Writes a part into a temporary file beside its place; `place_part`
+    /// moves it there once the upload may still take it.
+    pub async fn stage_part(&self, id: &str, part: u64, bytes: &[u8]) -> io::Result<PathBuf> {
         let dir = self.upload_dir(id);
         private_dir(&dir).await?;
         let temp = temporary(&dir, &format!("{part}.part"));
@@ -127,7 +129,13 @@ impl Storage {
             let _ = fs::remove_file(&temp).await;
             return Err(error);
         }
-        fs::rename(&temp, self.part_path(id, part)).await
+        Ok(temp)
+    }
+
+    /// Moves a staged part to its place; an earlier upload of the part is
+    /// replaced atomically.
+    pub async fn place_part(&self, temp: &Path, id: &str, part: u64) -> io::Result<()> {
+        fs::rename(temp, self.part_path(id, part)).await
     }
 
     /// The size of a stored part, `None` if it is missing.

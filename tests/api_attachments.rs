@@ -340,6 +340,48 @@ async fn only_active_members_reach_attachments() {
 }
 
 #[tokio::test]
+async fn a_member_who_leaves_while_a_part_arrives_stores_nothing() {
+    let (t, alice, vault) = setup().await;
+    let bob = t.register("bob@example.com").await;
+    t.share(&alice, &vault, &bob).await;
+    let id = new_uuid();
+    let data = blob(100);
+    let created = t.create_attachment(&bob, &vault, &id, data.len()).await;
+    assert_eq!(created.status, StatusCode::CREATED);
+    // Bob's part passes the check before the body and is still arriving
+    // when he leaves the vault.
+    let (request, body) = Req::put(&format!("{}/parts/0", base(&vault, &id)))
+        .token(&bob.access_token)
+        .header("content-type", "application/octet-stream")
+        .header("content-length", &data.len().to_string())
+        .build_streaming();
+    let upload = t.spawn(request);
+    for _ in 0..200 {
+        if t.app.large_bodies.in_flight(&bob.user_id) == 1 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    assert_eq!(t.app.large_bodies.in_flight(&bob.user_id), 1);
+    let left = t
+        .call(Req::delete(&format!("/v1/vaults/{vault}/members/me")).token(&bob.access_token))
+        .await;
+    assert_eq!(left.status, StatusCode::NO_CONTENT);
+    body.send(axum::body::Bytes::from(data)).await.unwrap();
+    drop(body);
+    let response = upload.await.unwrap();
+    assert_eq!(response.status, StatusCode::NOT_FOUND);
+    // Neither the part nor a temporary file was left behind.
+    let upload_dir = t.data_path(&format!("uploads/{id}"));
+    let files = std::fs::read_dir(&upload_dir).map_or(0, Iterator::count);
+    assert_eq!(files, 0);
+    assert_eq!(
+        t.complete(&alice, &vault, &id).await.code(),
+        "attachment_incomplete"
+    );
+}
+
+#[tokio::test]
 async fn deletes_in_any_state() {
     let (t, alice, vault) = setup().await;
     let done = t.stored(&alice, &vault, &blob(100)).await;
