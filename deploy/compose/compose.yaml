@@ -21,18 +21,24 @@ services:
       KEEMAN__SERVER__ALLOWED_ORIGINS: '["https://app.example.org"]'
       KEEMAN__WEBAUTHN__RP_ID: "app.example.org"
       KEEMAN__WEBAUTHN__RP_ORIGINS: '["https://app.example.org"]'
-      # Only the proxy reaches the API; it sets X-Forwarded-For.
-      KEEMAN__SERVER__TRUSTED_PROXIES: '["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]'
+      # Only the proxy's fixed address may set the client IP
+      # (X-Forwarded-For); any other container in the network could
+      # otherwise fake it and get around the rate limits per IP.
+      KEEMAN__SERVER__TRUSTED_PROXIES: '["172.31.240.10/32"]'
     volumes:
       - config:/etc/keeman
       - data:/var/lib/keeman
       - backups:/var/backups/keeman
+    networks:
+      - keeman
 
   web:
     image: keeman-webclient:latest
     restart: unless-stopped
     environment:
       KEEMAN_API_HOST: "api.example.org"
+    networks:
+      - keeman
 
   proxy:
     image: docker.io/library/caddy:2-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
@@ -47,6 +53,17 @@ services:
     depends_on:
       - api
       - web
+    networks:
+      keeman:
+        ipv4_address: 172.31.240.10
+
+# A fixed subnet, so the proxy keeps the address the API trusts. Pick
+# another one if it collides with a network on the host.
+networks:
+  keeman:
+    ipam:
+      config:
+        - subnet: 172.31.240.0/24
 
 volumes:
   config:
