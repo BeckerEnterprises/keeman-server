@@ -193,6 +193,8 @@ pub async fn disabled(app: &App, pending: &Pending, ip_hint: &str) -> ApiError {
     let result: ApiResult<()> = async {
         let now_text = format_timestamp(app.now());
         let mut tx = app.db.begin().await?;
+        // A lock that began meanwhile hides the disabled account as well.
+        throttle::ensure_unlocked(&mut tx, app, &pending.throttle_key).await?;
         db::challenges::delete(&mut *tx, &pending.hash).await?;
         audit::log(
             &mut tx,
@@ -228,7 +230,7 @@ pub async fn complete(
         // Used up by a concurrent request.
         return Err(ApiError::new(ErrorCode::ChallengeInvalid));
     }
-    throttle::success(tx, &pending.throttle_key).await?;
+    throttle::success(tx, app, &pending.throttle_key).await?;
     let now = app.now();
     if pending.purpose == "recovery" {
         return recovery_payload(

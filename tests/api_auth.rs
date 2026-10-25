@@ -494,6 +494,102 @@ async fn lockout_is_identical_for_existing_and_unknown_emails() {
 }
 
 #[tokio::test]
+async fn a_failure_or_success_during_a_lock_changes_nothing() {
+    use axum::response::IntoResponse;
+    use keeman_server::auth::throttle;
+    use keeman_server::clock::format_timestamp;
+
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let key = t.app.keys.throttle_key("alice@example.com");
+    let until = format_timestamp(t.now() + Duration::minutes(15));
+    let mut tx = t.app.db.begin().await.unwrap();
+    keeman_server::db::throttle::upsert(
+        &mut *tx,
+        &key,
+        0,
+        Some(&until),
+        &format_timestamp(t.now()),
+    )
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+
+    // Requests that passed the first check just before the lock began.
+    let mut tx = t.app.db.begin().await.unwrap();
+    let refused = throttle::failure(&mut tx, &t.app, &key, Some(&alice.user_id), "203.0.113.x")
+        .await
+        .unwrap_err();
+    assert_eq!(
+        refused.into_response().status(),
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    let refused = throttle::success(&mut tx, &t.app, &key).await.unwrap_err();
+    assert_eq!(
+        refused.into_response().status(),
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    drop(tx);
+
+    let row = keeman_server::db::throttle::get(&t.app.db.read, &key)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!((row.failures, row.locked_until), (0, Some(until)));
+    assert_eq!(
+        t.count("SELECT COUNT(*) FROM security_log WHERE event = 'login_locked'")
+            .await,
+        0
+    );
+    let response = login_raw(&t, &alice.login_body(), &unique_ip()).await;
+    assert_eq!(response.status, StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[tokio::test]
+async fn parallel_failures_cannot_lift_a_new_lock() {
+    use keeman_server::clock::format_timestamp;
+
+    let t = TestApp::with_config("[rate_limits]\ncredential_per_email_per_min = 100").await;
+    let alice = t.register("alice@example.com").await;
+    t.enable_totp_direct(&alice).await;
+    t.set_backup_codes(&alice, &["ABCDEFGHIJ"]).await;
+    let challenge = t.login_challenge(&alice).await;
+    // One failure short of the lock.
+    let key = t.app.keys.throttle_key("alice@example.com");
+    let mut tx = t.app.db.begin().await.unwrap();
+    keeman_server::db::throttle::upsert(&mut *tx, &key, 9, None, &format_timestamp(t.now()))
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let attempts = (0..6).map(|_| {
+        t.call(
+            Req::post("/v1/auth/2fa/backup-code")
+                .json(&json!({ "challenge_token": challenge, "code": "ZZZZZZZZZZ" }))
+                .peer(&unique_ip()),
+        )
+    });
+    let mut codes: Vec<String> = futures_util::future::join_all(attempts)
+        .await
+        .iter()
+        .map(|r| r.code())
+        .collect();
+    codes.sort();
+    let mut expected = vec!["rate_limited".to_string(); 5];
+    expected.insert(0, "invalid_second_factor".to_string());
+    assert_eq!(codes, expected);
+
+    let row = keeman_server::db::throttle::get(&t.app.db.read, &key)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.failures, 0);
+    assert!(row.locked_until.is_some());
+    let response = login_raw(&t, &alice.login_body(), &unique_ip()).await;
+    assert_eq!(response.status, StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[tokio::test]
 async fn lockout_counter_resets_on_success_and_decays() {
     let t = TestApp::new().await;
     let alice = t.register("alice@example.com").await;

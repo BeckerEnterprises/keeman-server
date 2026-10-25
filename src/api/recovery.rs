@@ -64,6 +64,7 @@ pub async fn start(
     let now_text = format_timestamp(now);
     let hint = ip.hint();
     let mut tx = app.db.begin().await?;
+    throttle::ensure_unlocked(&mut tx, &app, &key).await?;
     let user = match user {
         Some(user) if valid => user,
         user => {
@@ -104,7 +105,7 @@ pub async fn start(
         // The counter stays until the second factor succeeds.
         second_factor::issue(&mut tx, "recovery", &user.id, factors, None, now).await?
     } else {
-        throttle::success(&mut tx, &key).await?;
+        throttle::success(&mut tx, &app, &key).await?;
         second_factor::recovery_payload(&mut tx, &user.id, "recovery_key", &hint, now, None).await?
     };
     tx.commit().await?;

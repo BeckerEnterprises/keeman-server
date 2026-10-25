@@ -95,6 +95,7 @@ pub async fn reauth(
     let now_text = format_timestamp(now);
     let hint = ip.hint();
     let mut tx = app.db.begin().await?;
+    throttle::ensure_unlocked(&mut tx, &app, &key).await?;
     if !valid {
         throttle::failure(&mut tx, &app, &key, Some(&user.id), &hint).await?;
         audit::log(
@@ -110,7 +111,7 @@ pub async fn reauth(
         // The session stays valid; clients tell this apart by `code`.
         return Err(ApiError::new(ErrorCode::InvalidCredentials));
     }
-    throttle::success(&mut tx, &key).await?;
+    throttle::success(&mut tx, &app, &key).await?;
     let token = new_token().map_err(ApiError::internal)?;
     let challenge = db::challenges::NewChallenge {
         hash: &token.hash,

@@ -1,7 +1,7 @@
 //! Login lockout per e-mail HMAC: stored in the database, also for
 //! addresses without an account, so it never reveals whether one exists.
 
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 
 use crate::app::App;
 use crate::audit;
@@ -12,25 +12,34 @@ use crate::error::{ApiError, ApiResult, ErrorCode};
 /// Counters without new failures are forgotten after this time.
 const DECAY: Duration = Duration::hours(24);
 
+/// `429` with `Retry-After` if the row holds a lock that is still active.
+fn locked(row: Option<&db::throttle::ThrottleRow>, now: OffsetDateTime) -> Option<ApiError> {
+    let until = row?.locked_until.as_deref().and_then(parse_timestamp)?;
+    if until <= now {
+        return None;
+    }
+    let seconds = ((until - now).whole_milliseconds() + 999) / 1000;
+    Some(ApiError::new(ErrorCode::RateLimited).retry_after(u64::try_from(seconds).unwrap_or(1)))
+}
+
 /// `429` with `Retry-After` while the address is locked; checked before
 /// anything else and not counted.
 pub async fn check(app: &App, key: &[u8; 32]) -> ApiResult<()> {
-    let Some(row) = db::throttle::get(&app.db.read, key).await? else {
-        return Ok(());
-    };
-    let now = app.now();
-    match row.locked_until.as_deref().and_then(parse_timestamp) {
-        Some(until) if until > now => {
-            let seconds = ((until - now).whole_milliseconds() + 999) / 1000;
-            Err(ApiError::new(ErrorCode::RateLimited)
-                .retry_after(u64::try_from(seconds).unwrap_or(1)))
-        }
-        _ => Ok(()),
-    }
+    let row = db::throttle::get(&app.db.read, key).await?;
+    locked(row.as_ref(), app.now()).map_or(Ok(()), Err)
+}
+
+/// The same test as the first statement of the write transaction: a lock
+/// that began while this request was being checked applies to it too, so
+/// its result (failure, success, disabled account) is never revealed.
+pub async fn ensure_unlocked(conn: &mut Conn, app: &App, key: &[u8; 32]) -> ApiResult<()> {
+    let row = db::throttle::get(&mut *conn, key).await?;
+    locked(row.as_ref(), app.now()).map_or(Ok(()), Err)
 }
 
 /// Counts a failed credential check; the last allowed failure locks the
-/// address and starts the counter again.
+/// address and starts the counter again. While a lock is active nothing is
+/// counted and the lock stays as it is (`429`).
 pub async fn failure(
     conn: &mut Conn,
     app: &App,
@@ -41,6 +50,9 @@ pub async fn failure(
     let now = app.now();
     let now_text = format_timestamp(now);
     let row = db::throttle::get(&mut *conn, key).await?;
+    if let Some(error) = locked(row.as_ref(), now) {
+        return Err(error);
+    }
     let previous = row
         .as_ref()
         .filter(|r| parse_timestamp(&r.updated_at).is_some_and(|t| now - t < DECAY))
@@ -66,8 +78,9 @@ pub async fn failure(
     Ok(())
 }
 
-/// A successful credential check resets the counter.
-pub async fn success(conn: &mut Conn, key: &[u8; 32]) -> ApiResult<()> {
+/// A complete login resets the counter, but never lifts an active lock.
+pub async fn success(conn: &mut Conn, app: &App, key: &[u8; 32]) -> ApiResult<()> {
+    ensure_unlocked(conn, app, key).await?;
     db::throttle::clear(conn, key).await?;
     Ok(())
 }

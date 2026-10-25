@@ -247,6 +247,7 @@ pub async fn login(
     let now_text = format_timestamp(now);
     let hint = ip.hint();
     let mut tx = app.db.begin().await?;
+    throttle::ensure_unlocked(&mut tx, &app, &key).await?;
     let user = match user {
         Some(user) if valid => user,
         user => {
@@ -293,7 +294,7 @@ pub async fn login(
         tx.commit().await?;
         return Ok(response);
     }
-    throttle::success(&mut tx, &key).await?;
+    throttle::success(&mut tx, &app, &key).await?;
     let issued = session::create(&mut tx, &app, &user.id, &body.device, &hint, now).await?;
     db::users::set_last_login(&mut *tx, &user.id, &now_text).await?;
     audit::log(
