@@ -246,7 +246,8 @@ pub async fn disabled(app: &App, pending: &Pending, ip_hint: &str) -> ApiError {
 
 /// Completes the challenge inside the caller's transaction, after the
 /// factor was accepted there: consumes it, resets the lockout and answers
-/// with `Session` (login) or `RecoveryPayload` (recovery).
+/// with `Session` (login) or `RecoveryPayload` (recovery). Also returns the
+/// sessions a new one revoked for room, for the hub after the commit.
 pub async fn complete(
     tx: &mut Conn,
     app: &App,
@@ -254,7 +255,7 @@ pub async fn complete(
     method: &str,
     ip_hint: &str,
     backup_codes_remaining: Option<i64>,
-) -> ApiResult<Response> {
+) -> ApiResult<(Response, Vec<String>)> {
     // Gone if a concurrent request used it up, or if a password change,
     // recovery or disabling the account deleted it after it was opened.
     if !db::challenges::delete(&mut *tx, &pending.hash).await? {
@@ -263,7 +264,7 @@ pub async fn complete(
     throttle::success(tx, app, &pending.throttle_key).await?;
     let now = app.now();
     if pending.purpose == "recovery" {
-        return recovery_payload(
+        let response = recovery_payload(
             tx,
             app,
             &pending.user_id,
@@ -272,7 +273,8 @@ pub async fn complete(
             now,
             backup_codes_remaining,
         )
-        .await;
+        .await?;
+        return Ok((response, Vec::new()));
     }
     let device: Device =
         serde_json::from_value(pending.state["device"].clone()).map_err(ApiError::internal)?;
@@ -289,14 +291,15 @@ pub async fn complete(
             json!({ "session_id": issued.session_id, "method": method }),
         )
         .await?;
-    Ok(session::response_with_remaining(
+    let response = session::response_with_remaining(
         app,
         StatusCode::OK,
         &pending.user_id,
         &issued,
         device.client_type,
         backup_codes_remaining,
-    ))
+    );
+    Ok((response, issued.revoked))
 }
 
 #[derive(Serialize)]

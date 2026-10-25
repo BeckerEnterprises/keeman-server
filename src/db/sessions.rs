@@ -254,6 +254,24 @@ pub async fn is_active_of<'e>(
     Ok(found.is_some())
 }
 
+/// The active sessions of the user after the `keep` most recently used.
+pub async fn beyond<'e>(
+    ex: impl SqliteExecutor<'e>,
+    user_id: &str,
+    keep: i64,
+    now: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT id AS "id!" FROM sessions WHERE user_id = ? AND revoked_at IS NULL AND refresh_expires_at > ?
+           ORDER BY last_seen_at DESC, created_at DESC, id DESC LIMIT -1 OFFSET ?"#,
+        user_id,
+        now,
+        keep
+    )
+    .fetch_all(ex)
+    .await
+}
+
 /// Whether the session is active and its account enabled.
 pub async fn is_valid<'e>(
     ex: impl SqliteExecutor<'e>,

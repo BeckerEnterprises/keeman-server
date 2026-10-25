@@ -18,6 +18,9 @@ pub struct Issued {
     pub session_id: String,
     pub access_token: String,
     pub refresh_token: String,
+    /// Sessions revoked to stay within the limit per account; the caller
+    /// tells the hub after the commit.
+    pub revoked: Vec<String>,
 }
 
 impl App {
@@ -94,10 +97,20 @@ pub async fn create(
     db::sessions::insert(&mut *conn, &session).await?;
     let refresh_token = issue_refresh(conn, &session_id, now).await?;
     let access_token = issue_access(conn, app, &session_id, now).await?;
+    // The least recently used sessions beyond the limit make room.
+    let limit = i64::from(app.config.limits.sessions_per_account);
+    let revoked = db::sessions::beyond(&mut *conn, user_id, limit, &now_text).await?;
+    for id in &revoked {
+        db::sessions::revoke(conn, id, &now_text).await?;
+    }
+    app.audit
+        .sessions_revoked(conn, &now_text, user_id, Some(ip_hint), &revoked, "limit")
+        .await?;
     Ok(Issued {
         session_id,
         access_token,
         refresh_token,
+        revoked,
     })
 }
 

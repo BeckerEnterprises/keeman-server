@@ -319,6 +319,7 @@ pub async fn login(
         )
         .await?;
     tx.commit().await?;
+    app.hub.revoke_sessions(&issued.revoked);
     Ok(session::response(
         &app,
         StatusCode::OK,

@@ -977,3 +977,38 @@ async fn dev_mode_uses_the_fallback_cookie_name() {
         .await;
     assert_eq!(response.status, StatusCode::OK);
 }
+
+#[tokio::test]
+async fn a_new_session_beyond_the_limit_revokes_the_least_recently_used() {
+    let t = TestApp::with_config(
+        "[limits]\nsessions_per_account = 3\n[rate_limits]\ncredential_per_email_per_min = 1000\n",
+    )
+    .await;
+    let alice = t.register("alice@example.com").await;
+    let second = t.login(&alice).await;
+    t.advance(Duration::minutes(2));
+    let third = t.login(&alice).await;
+    // The first session is used again, so the second is the least recent.
+    t.advance(Duration::minutes(2));
+    let me = t.call(Req::get("/v1/me").token(&alice.access_token)).await;
+    assert_eq!(me.status, StatusCode::OK);
+    t.advance(Duration::minutes(2));
+    let fourth = t.login(&alice).await;
+    let active = |id: &str| {
+        format!("SELECT COUNT(*) FROM sessions WHERE id = '{id}' AND revoked_at IS NULL")
+    };
+    assert_eq!(t.count(&active(&second.session_id)).await, 0);
+    for session in [&alice, &third, &fourth] {
+        assert_eq!(t.count(&active(&session.session_id)).await, 1);
+    }
+    let reason = t
+        .text(&format!(
+            "SELECT json_extract(detail, '$.reason') FROM security_log
+             WHERE event = 'session_revoked' AND json_extract(detail, '$.session_id') = '{}'",
+            second.session_id
+        ))
+        .await;
+    assert_eq!(reason, "limit");
+    let response = t.call(Req::get("/v1/me").token(&second.access_token)).await;
+    assert_eq!(response.code(), "session_invalid");
+}

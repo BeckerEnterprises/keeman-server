@@ -58,8 +58,10 @@ pub async fn totp(
         drop(tx);
         return Err(second_factor::fail(&app, &pending, "totp", &hint).await);
     }
-    let response = second_factor::complete(&mut tx, &app, &pending, "totp", &hint, None).await?;
+    let (response, revoked) =
+        second_factor::complete(&mut tx, &app, &pending, "totp", &hint, None).await?;
     tx.commit().await?;
+    app.hub.revoke_sessions(&revoked);
     Ok(response)
 }
 
@@ -118,7 +120,7 @@ pub async fn backup_code(
         return Err(second_factor::fail(&app, &pending, "backup_code", &hint).await);
     }
     let remaining = db::backup_codes::remaining(&mut *tx, &pending.user_id).await?;
-    let response = second_factor::complete(
+    let (response, revoked) = second_factor::complete(
         &mut tx,
         &app,
         &pending,
@@ -128,6 +130,7 @@ pub async fn backup_code(
     )
     .await?;
     tx.commit().await?;
+    app.hub.revoke_sessions(&revoked);
     Ok(response)
 }
 
@@ -255,8 +258,9 @@ pub async fn webauthn_verify(
     {
         return Err(ApiError::internal("passkey changed inside the transaction"));
     }
-    let response =
+    let (response, revoked) =
         second_factor::complete(&mut tx, &app, &pending, "webauthn", &hint, None).await?;
     tx.commit().await?;
+    app.hub.revoke_sessions(&revoked);
     Ok(response)
 }
