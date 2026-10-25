@@ -12,3 +12,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - systemd service and timer for daily backups (`deploy/keeman-backup.service`, `deploy/keeman-backup.timer`).
 - Container image (`Dockerfile`, non-root) and a compose example with the web client and Caddy (`deploy/compose/`).
 - README: backup and restore, copies elsewhere, containers, and the duties of the AGPL for modified versions.
+
+### Changed
+
+- Updated libc to 0.2.191 and unicode-normalization to 0.1.26.
