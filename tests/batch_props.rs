@@ -301,7 +301,10 @@ fn batches_behave_like_the_model() {
         .unwrap();
     let (t, clients) = runtime.block_on(async {
         // Every case uses the same sessions; the per-session limit would bite.
-        let t = TestApp::with_config("[rate_limits]\nsession_per_min = 1000000\n").await;
+        let t = TestApp::with_config(
+            "[rate_limits]\nsession_per_min = 1000000\naccount_per_min = 1000000\n",
+        )
+        .await;
         let alice = t.register("alice@example.com").await;
         let bob = t.register("bob@example.com").await;
         (t, [alice, bob])

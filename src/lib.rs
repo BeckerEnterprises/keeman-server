@@ -19,6 +19,7 @@ pub mod favicon;
 pub mod idempotency;
 pub mod jobs;
 pub mod logging;
+pub mod quota;
 pub mod ratelimit;
 pub mod storage;
 pub mod types;

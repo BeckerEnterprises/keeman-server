@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rotations SET staged_excess = MAX(0, staged_excess + ?) WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "56bf659b555e963796307e174f7b9c65f5a5e9d93e22cb1834c9f3cba45ff631"
+}

@@ -407,7 +407,9 @@ async fn transfers_between_vaults_and_entries() {
 
 #[tokio::test]
 async fn quota_counts_against_the_vault_creator() {
-    let t = TestApp::with_config("[limits]\nuser_quota_bytes = 1000\n").await;
+    // 1000 bytes for attachments plus the objects of Alice's two vaults
+    // (3 × 300 bytes each), which count as well.
+    let t = TestApp::with_config("[limits]\nuser_quota_bytes = 2800\n").await;
     let alice = t.register("alice@example.com").await;
     let vault = t.create_vault(&alice).await;
     let second = t.create_vault(&alice).await;

@@ -18,6 +18,7 @@ use crate::clock::format_timestamp;
 use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::extract::{StrictJson, octet_stream};
+use crate::quota;
 use crate::storage::attachments::body;
 use crate::types::{Uuid, is_canonical_uuid};
 
@@ -89,14 +90,17 @@ async fn check_quota(
     caller: &str,
     size: u64,
 ) -> ApiResult<()> {
-    let account = db::attachments::quota_account(conn, vault_id)
-        .await?
-        .unwrap_or_else(|| caller.to_string());
-    let used = unsigned(db::attachments::usage(conn, &account).await?);
-    if used.saturating_add(size) > app.config.limits.user_quota_bytes {
-        return Err(ApiError::new(ErrorCode::QuotaExceeded));
-    }
-    Ok(())
+    let account = quota::account_for(conn, vault_id, caller).await?;
+    let growth = i64::try_from(size).unwrap_or(i64::MAX);
+    let now = format_timestamp(app.now());
+    quota::require_room(
+        conn,
+        &account,
+        growth,
+        app.config.limits.user_quota_bytes,
+        &now,
+    )
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -400,8 +404,8 @@ pub async fn transfer(
         return Err(ApiError::new(ErrorCode::Conflict));
     }
     if target != source {
-        let from = db::attachments::quota_account(&mut tx, source).await?;
-        let to = db::attachments::quota_account(&mut tx, target).await?;
+        let from = db::quota::account(&mut tx, source).await?;
+        let to = db::quota::account(&mut tx, target).await?;
         if from != to {
             check_quota(&app, &mut tx, target, user_id, unsigned(attachment.size)).await?;
         }

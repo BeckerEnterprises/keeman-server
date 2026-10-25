@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", type AS kind, revision, deleted AS \"deleted: bool\" FROM objects\n           WHERE vault_id = ? AND id IN (SELECT value FROM json_each(?))",
+  "query": "SELECT id AS \"id!\", type AS kind, revision, deleted AS \"deleted: bool\", size FROM objects\n           WHERE vault_id = ? AND id IN (SELECT value FROM json_each(?))",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,17 @@
             "name": "deleted"
           }
         }
+      },
+      {
+        "name": "size",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "objects",
+            "name": "size"
+          }
+        }
       }
     ],
     "parameters": {
@@ -55,8 +66,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "1084ebeeb2be968eff3887e204168c415fbd4426c4095b12cffe090cf7478375"
+  "hash": "0c971a757888856fd5d2ae382c5121dcb27fc71025976857f0356090f9191fb9"
 }

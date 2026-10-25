@@ -64,6 +64,36 @@ pub async fn upsert_object(
     Ok(())
 }
 
+/// Lengths of objects already staged in this rotation (`ids`: JSON array);
+/// `length()` of a BLOB does not read its content.
+pub async fn staged_lengths(
+    conn: &mut Conn,
+    rotation_id: &str,
+    ids: &str,
+) -> Result<Vec<(String, i64)>, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"SELECT id AS "id!", length(data) AS "len!: i64" FROM rotation_objects
+           WHERE rotation_id = ? AND id IN (SELECT value FROM json_each(?))"#,
+        rotation_id,
+        ids
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    Ok(rows.into_iter().map(|r| (r.id, r.len)).collect())
+}
+
+/// Changes the excess of staged objects over the objects they replace.
+pub async fn add_excess(conn: &mut Conn, rotation_id: &str, delta: i64) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "UPDATE rotations SET staged_excess = MAX(0, staged_excess + ?) WHERE id = ?",
+        delta,
+        rotation_id
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
 /// Live objects that are neither dropped (`dropped`, a JSON array of IDs)
 /// nor uploaded with their type.
 pub async fn missing_count(

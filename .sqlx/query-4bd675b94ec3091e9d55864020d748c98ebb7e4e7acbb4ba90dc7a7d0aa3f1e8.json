@@ -1,0 +1,33 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", length(data) AS \"len!: i64\" FROM rotation_objects\n           WHERE rotation_id = ? AND id IN (SELECT value FROM json_each(?))",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "rotation_objects",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "len!: i64",
+        "ordinal": 1,
+        "type_info": "Null",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "4bd675b94ec3091e9d55864020d748c98ebb7e4e7acbb4ba90dc7a7d0aa3f1e8"
+}

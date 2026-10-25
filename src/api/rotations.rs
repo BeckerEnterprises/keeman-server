@@ -21,6 +21,7 @@ use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
 use crate::extract::{BODY_LIMIT, LARGE_BODY_LIMIT};
 use crate::idempotency;
+use crate::quota;
 use crate::types::{KeyBox, ObjectData, ObjectType, Positive, Uuid, WrappedKey};
 
 /// A rotation expires after one hour.
@@ -211,6 +212,7 @@ async fn upload_in(
     vault_id: &str,
     rotation_id: &str,
     objects: &[RotationObject],
+    quota: u64,
     now: &str,
 ) -> ApiResult<((), StatusCode, Value)> {
     require(conn, vault_id, user_id, Need::Owner).await?;
@@ -246,6 +248,26 @@ async fn upload_in(
             }
         }
     }
+    // Only the excess over the replaced object counts: a re-encryption has
+    // the same size and costs nothing.
+    let staged: HashMap<String, i64> =
+        db::rotations::staged_lengths(conn, rotation_id, &ids_json(&ids)?)
+            .await?
+            .into_iter()
+            .collect();
+    let delta: i64 = objects
+        .iter()
+        .map(|object| {
+            let live = stored.get(&object.id.0).map_or(0, |o| o.size);
+            let excess = |len: i64| (len - live).max(0);
+            excess(quota::bytes(object.data.0.len()))
+                - staged.get(&object.id.0).map_or(0, |len| excess(*len))
+        })
+        .sum();
+    if delta > 0 {
+        let account = quota::account_for(conn, vault_id, user_id).await?;
+        quota::require_room(conn, &account, delta, quota, now).await?;
+    }
     for object in objects {
         db::rotations::upsert_object(
             conn,
@@ -255,6 +277,9 @@ async fn upload_in(
             &object.data.0,
         )
         .await?;
+    }
+    if delta != 0 {
+        db::rotations::add_excess(conn, rotation_id, delta).await?;
     }
     Ok(((), StatusCode::NO_CONTENT, Value::Null))
 }
@@ -273,8 +298,18 @@ pub async fn upload(
     check_objects(&body.objects)?;
     let now = format_timestamp(app.now());
     let user_id = session.user_id.as_str();
+    let quota = app.config.limits.user_quota_bytes;
     let work = async |conn: &mut Conn| {
-        upload_in(conn, user_id, &vault_id, &rotation_id, &body.objects, &now).await
+        upload_in(
+            conn,
+            user_id,
+            &vault_id,
+            &rotation_id,
+            &body.objects,
+            quota,
+            &now,
+        )
+        .await
     };
     let (response, _) = idempotent(&app, user_id, &request, &now, work, nothing).await?;
     Ok(response)
@@ -353,6 +388,7 @@ async fn commit_in(
     vault_id: &str,
     rotation_id: &str,
     body: &CommitBody,
+    quota: u64,
     now: &str,
     ip_hint: &str,
 ) -> ApiResult<(Committed, StatusCode, Value)> {
@@ -414,6 +450,17 @@ async fn commit_in(
         .any(|k| states.get(&k.user_id.0).is_none_or(|s| s != "pending"))
     {
         return Err(incomplete());
+    }
+    // Drop tombstones replace the dropped objects; the excess of the uploads
+    // was counted when they were staged.
+    let growth: i64 = body
+        .drop_objects
+        .iter()
+        .map(|o| quota::bytes(o.data.0.len()) - stored.get(&o.id.0).map_or(0, |e| e.size))
+        .sum();
+    if growth > 0 {
+        let account = quota::account_for(conn, vault_id, user_id).await?;
+        quota::require_room(conn, &account, growth, quota, now).await?;
     }
 
     let revision = rotation.base_revision + 1;
@@ -536,6 +583,7 @@ pub async fn commit(
     check_commit(&vault_id, user_id, &body)?;
     let now = format_timestamp(app.now());
     let ip_hint = ip.hint();
+    let quota = app.config.limits.user_quota_bytes;
     let work = async |conn: &mut Conn| {
         commit_in(
             conn,
@@ -543,6 +591,7 @@ pub async fn commit(
             &vault_id,
             &rotation_id,
             &body,
+            quota,
             &now,
             &ip_hint,
         )

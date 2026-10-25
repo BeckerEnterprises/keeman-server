@@ -117,46 +117,6 @@ pub async fn ids_of_vault(conn: &mut Conn, vault_id: &str) -> Result<Vec<String>
     .await
 }
 
-/// The account a vault's attachments count against: its creator
-/// while an active owner, otherwise the active owner with the oldest
-/// membership.
-pub async fn quota_account(conn: &mut Conn, vault_id: &str) -> Result<Option<String>, sqlx::Error> {
-    sqlx::query_scalar!(
-        r#"SELECT COALESCE(
-             (SELECT v.created_by FROM vaults v
-              JOIN memberships c ON c.vault_id = v.id AND c.user_id = v.created_by
-              WHERE v.id = ? AND c.role = 'owner' AND c.state = 'active'),
-             (SELECT o.user_id FROM memberships o
-              WHERE o.vault_id = ? AND o.role = 'owner' AND o.state = 'active'
-              ORDER BY o.created_at, o.user_id LIMIT 1)) AS "account?: String""#,
-        vault_id,
-        vault_id
-    )
-    .fetch_one(&mut *conn)
-    .await
-}
-
-/// Encrypted bytes of all attachments, uploading or complete, of the
-/// vaults that count against this account.
-pub async fn usage(conn: &mut Conn, account: &str) -> Result<i64, sqlx::Error> {
-    sqlx::query_scalar!(
-        r#"SELECT COALESCE(SUM(a.size), 0) AS "bytes!: i64" FROM attachments a
-           WHERE a.vault_id IN (
-             SELECT m.vault_id FROM memberships m
-             WHERE m.user_id = ? AND m.role = 'owner' AND m.state = 'active'
-               AND m.user_id = COALESCE(
-                 (SELECT v.created_by FROM vaults v
-                  JOIN memberships c ON c.vault_id = v.id AND c.user_id = v.created_by
-                  WHERE v.id = m.vault_id AND c.role = 'owner' AND c.state = 'active'),
-                 (SELECT o.user_id FROM memberships o
-                  WHERE o.vault_id = m.vault_id AND o.role = 'owner' AND o.state = 'active'
-                  ORDER BY o.created_at, o.user_id LIMIT 1)))"#,
-        account
-    )
-    .fetch_one(&mut *conn)
-    .await
-}
-
 /// Deletes uploads started before `cutoff` that never completed.
 pub async fn delete_stale_uploads(
     conn: &mut Conn,

@@ -44,6 +44,8 @@ pub struct Existing {
     pub kind: String,
     pub revision: i64,
     pub deleted: bool,
+    /// Decoded size of the stored data, for the quota.
+    pub size: i64,
 }
 
 /// The stored state of these objects; `ids` is a JSON array of IDs.
@@ -54,7 +56,7 @@ pub async fn existing(
 ) -> Result<Vec<Existing>, sqlx::Error> {
     sqlx::query_as!(
         Existing,
-        r#"SELECT id AS "id!", type AS kind, revision, deleted AS "deleted: bool" FROM objects
+        r#"SELECT id AS "id!", type AS kind, revision, deleted AS "deleted: bool", size FROM objects
            WHERE vault_id = ? AND id IN (SELECT value FROM json_each(?))"#,
         vault_id,
         ids

@@ -576,3 +576,108 @@ async fn a_vault_of_more_than_20_mib_is_rotated() {
         assert_eq!(object["data"], uploaded["data"]);
     }
 }
+
+#[tokio::test]
+async fn staged_objects_count_only_their_excess() {
+    // The vault's three objects take 900 bytes.
+    let t = TestApp::with_config("[limits]\nuser_quota_bytes = 1000\n").await;
+    let alice = t.register("alice@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    let objects = live(&t, &alice, &vault_id).await;
+    let rotation_id = opened(&t, &alice, &vault_id).await;
+    // A re-encryption has the same size and costs nothing.
+    let response = t
+        .call(upload(
+            &alice,
+            &vault_id,
+            &rotation_id,
+            &reencrypted(&objects, 300),
+        ))
+        .await;
+    assert_eq!(
+        response.status,
+        StatusCode::NO_CONTENT,
+        "{}",
+        response.text()
+    );
+    let one = |i: usize, len: usize| reencrypted(&objects[i..=i], len);
+    // 80 bytes of excess fit, 50 more do not.
+    assert_eq!(
+        t.call(upload(&alice, &vault_id, &rotation_id, &one(0, 380)))
+            .await
+            .status,
+        StatusCode::NO_CONTENT
+    );
+    let response = t
+        .call(upload(&alice, &vault_id, &rotation_id, &one(1, 350)))
+        .await;
+    assert_eq!(response.code(), "quota_exceeded");
+    // Replacing the larger upload frees its excess.
+    assert_eq!(
+        t.call(upload(&alice, &vault_id, &rotation_id, &one(0, 300)))
+            .await
+            .status,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        t.call(upload(&alice, &vault_id, &rotation_id, &one(1, 350)))
+            .await
+            .status,
+        StatusCode::NO_CONTENT
+    );
+    // The open rotation's excess blocks this batch until it expires.
+    let response = t
+        .batch(&alice, &vault_id, vec![put_op(&new_uuid(), "entry", None)])
+        .await;
+    assert_eq!(response.code(), "quota_exceeded");
+    t.advance(Duration::minutes(61));
+    let alice = t.login(&alice).await;
+    let response = t
+        .batch(&alice, &vault_id, vec![put_op(&new_uuid(), "entry", None)])
+        .await;
+    assert_eq!(
+        response.code(),
+        "quota_exceeded",
+        "900 + 300 is still too much"
+    );
+    let mut small = put_op(&new_uuid(), "entry", None);
+    small["data"] = json!(envelope(100));
+    let response = t.batch(&alice, &vault_id, vec![small]).await;
+    assert_eq!(response.status, StatusCode::OK, "{}", response.text());
+}
+
+#[tokio::test]
+async fn oversized_drop_tombstones_count_at_commit() {
+    let t = TestApp::with_config("[limits]\nuser_quota_bytes = 1000\n").await;
+    let alice = t.register("alice@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    let objects = live(&t, &alice, &vault_id).await;
+    let dropped = objects
+        .iter()
+        .find(|o| o["type"] == "group")
+        .unwrap()
+        .clone();
+    let kept: Vec<Value> = objects
+        .iter()
+        .filter(|o| o["id"] != dropped["id"])
+        .cloned()
+        .collect();
+    let rotation_id = opened(&t, &alice, &vault_id).await;
+    let response = t
+        .call(upload(
+            &alice,
+            &vault_id,
+            &rotation_id,
+            &reencrypted(&kept, 300),
+        ))
+        .await;
+    assert_eq!(response.status, StatusCode::NO_CONTENT);
+    let mut body = commit_body(&[], &[], &[]);
+    // A 450-byte tombstone for a 300-byte object grows the usage by 150.
+    body["drop_objects"] = json!([{ "id": dropped["id"], "data": envelope(450) }]);
+    let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+    assert_eq!(response.code(), "quota_exceeded");
+    body["drop_objects"] = json!([{ "id": dropped["id"], "data": envelope(256) }]);
+    let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+    assert_eq!(response.status, StatusCode::OK, "{}", response.text());
+}

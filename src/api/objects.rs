@@ -19,6 +19,7 @@ use crate::error::{ApiError, ApiResult, Conflict, ErrorCode};
 use crate::events;
 use crate::extract::{LARGE_BODY_LIMIT, parse_query};
 use crate::idempotency;
+use crate::quota;
 use crate::types::{
     MAX_SAFE_INTEGER, ObjectData, ObjectType, Positive, Uuid, decode_base64url, encode_base64url,
     is_canonical_uuid,
@@ -292,6 +293,7 @@ async fn batch_in(
     user_id: &str,
     vault_id: &str,
     ops: &[Op],
+    quota: u64,
     now: &str,
 ) -> ApiResult<Applied> {
     require(conn, vault_id, user_id, Need::Member).await?;
@@ -327,6 +329,21 @@ async fn batch_in(
         .collect();
     if !conflicts.is_empty() {
         return Err(ApiError::conflicts(conflicts));
+    }
+    // New minus replaced sizes; a tombstone replaces its object too.
+    let growth: i64 = ops
+        .iter()
+        .map(|op| {
+            let data = match op {
+                Op::Put(put) => &put.data,
+                Op::Delete(delete) => &delete.data,
+            };
+            quota::bytes(data.0.len()) - stored.get(op.id()).map_or(0, |o| o.size)
+        })
+        .sum();
+    if growth > 0 {
+        let account = quota::account_for(conn, vault_id, user_id).await?;
+        quota::require_room(conn, &account, growth, quota, now).await?;
     }
 
     let revision = vault.revision + 1;
@@ -396,7 +413,8 @@ pub async fn batch(
         return Ok(replay);
     }
     let mut savepoint = db::savepoint(&mut tx).await?;
-    let result = batch_in(&mut savepoint, user_id, &vault_id, &body.ops, &now).await;
+    let quota = app.config.limits.user_quota_bytes;
+    let result = batch_in(&mut savepoint, user_id, &vault_id, &body.ops, quota, &now).await;
     let answer = idempotency::settle(savepoint, result).await?;
     let event = answer
         .as_ref()

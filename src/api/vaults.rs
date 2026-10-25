@@ -20,6 +20,7 @@ use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
 use crate::extract::BODY_LIMIT;
 use crate::idempotency;
+use crate::quota;
 use crate::types::{
     ObjectData, ObjectType, Positive, Uuid, WrappedKey, encode_base64url, is_canonical_uuid,
 };
@@ -183,6 +184,7 @@ async fn create_in(
     conn: &mut Conn,
     user_id: &str,
     body: &CreateBody,
+    quota: u64,
     now: &str,
     ip_hint: &str,
 ) -> ApiResult<(StatusCode, Value)> {
@@ -190,6 +192,13 @@ async fn create_in(
     if db::vaults::exists(conn, vault_id).await? {
         return Err(ApiError::new(ErrorCode::Conflict));
     }
+    // The new vault counts against its creator.
+    let growth = body
+        .objects
+        .iter()
+        .map(|o| quota::bytes(o.data.0.len()))
+        .sum();
+    quota::require_room(conn, user_id, growth, quota, now).await?;
     let vault = db::vaults::NewVault {
         id: vault_id,
         owner: user_id,
@@ -230,7 +239,8 @@ pub async fn create(
         return Ok(replay);
     }
     let mut savepoint = db::savepoint(&mut tx).await?;
-    let result = create_in(&mut savepoint, user_id, &body, &now, &ip.hint()).await;
+    let quota = app.config.limits.user_quota_bytes;
+    let result = create_in(&mut savepoint, user_id, &body, quota, &now, &ip.hint()).await;
     let answer = idempotency::settle(savepoint, result).await?;
     let created = answer.is_ok();
     let response = idempotency::store(&mut tx, user_id, &request, &now, answer).await?;
