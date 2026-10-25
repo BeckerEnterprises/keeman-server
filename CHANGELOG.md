@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Security
+
+- A login lockout that begins while a credential check is still running now applies to that check: a failure or success during a lock changes nothing, so parallel guesses can no longer lift a fresh lock.
+- Changing the password ends open sign-in and recovery steps begun with the old one; a new recovery key ends open recoveries.
+- Vault membership and role are checked before large request bodies are read (batch, key rotation, attachment parts). A response already stored for the same idempotency key and endpoint is still replayed.
+- New rate limit per account across all sessions (`rate_limits.account_per_min`, default 1200 per minute).
+- Large request bodies share a memory budget (`limits.large_body_budget_bytes`, default 128 MiB, requests wait in arrival order), and one account runs at most `limits.large_requests_per_account` (default 4) of them at once; one more gets `429` with `Retry-After: 1`.
+
+### Changed
+
+- The storage quota (`limits.user_quota_bytes`) now counts objects including deletion markers and what open key rotations add, not only attachments. Vault creation, batches and key rotations that would exceed it get `507 quota_exceeded`, which is never stored for an idempotency key; deleting and shrinking always work. The migration `0002_quota.sql` runs on start.
+
 ## [0.1.0] - 2026-10-25
 
 First public release. KeeMan is in early development: do not use it with real passwords yet, and note that the code has not been reviewed externally.

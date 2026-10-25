@@ -50,6 +50,12 @@ rp_origins = ["https://app.example.org"]
 
 The web client and the API must be on the same site (for example `app.example.org` and `api.example.org`) because the refresh cookie is `SameSite=Strict`.
 
+Limits worth knowing:
+
+- `limits.user_quota_bytes` (default 2 GiB) is the storage of each vault owner: objects including deletion markers, attachments and what an open key rotation adds. A request that would grow beyond it gets `507 quota_exceeded`; deleting and shrinking always work. Members of a shared vault write into its owner's quota.
+- `limits.large_body_budget_bytes` (default 128 MiB) caps the request bodies of large requests (batches, key rotation, attachment parts) held in memory at once; further requests wait. `limits.large_requests_per_account` (default 4) is how many of them one account may run at the same time.
+- `rate_limits.session_per_min` (600) and `rate_limits.account_per_min` (1200) limit authenticated requests per session and for all sessions of an account together.
+
 ## Commands
 
 All commands take `--config <path>` (default `./config.toml`) and refuse to run if the configuration, the file permissions or the server secret are not safe; `restore` needs no configuration, and `check` reports every problem instead of stopping at the first.
