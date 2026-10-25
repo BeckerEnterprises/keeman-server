@@ -17,7 +17,7 @@ use keeman_server::app::{App, router};
 use keeman_server::clock::{Clock, MockClock};
 use keeman_server::config::Config;
 use keeman_server::crypto::{ServerSecret, random_bytes};
-use keeman_server::db::Db;
+use keeman_server::db::{Db, Tx};
 use keeman_server::events::socket::Timings;
 use keeman_server::favicon::Favicons;
 use keeman_server::types::encode_base64url;
@@ -321,6 +321,41 @@ impl TestApp {
         .unwrap();
     }
 
+    /// Waits until `n` tasks wait for the write connection: a request
+    /// started while the test holds a transaction has reached its own, after
+    /// everything it checks beforehand.
+    pub async fn writers_waiting(&self, n: usize) {
+        for _ in 0..500 {
+            if self.app.db.writers_waiting() >= n {
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        panic!(
+            "{} writers waiting, expected {n}",
+            self.app.db.writers_waiting()
+        );
+    }
+
+    /// Turns on TOTP inside a held transaction.
+    pub async fn enable_totp_in(&self, tx: &mut Tx, account: &Account) {
+        let secret = random_bytes::<20>().unwrap();
+        let sealed = self
+            .app
+            .keys
+            .seal_totp_secret(&account.user_id, &secret)
+            .unwrap();
+        keeman_server::db::users::enable_totp(
+            &mut **tx,
+            &account.user_id,
+            &sealed,
+            0,
+            "2026-10-23T08:00:00.000Z",
+        )
+        .await
+        .unwrap();
+    }
+
     pub async fn security_events(&self) -> Vec<String> {
         sqlx::query_scalar("SELECT event FROM security_log ORDER BY id")
             .fetch_all(&self.app.db.read)
@@ -330,6 +365,14 @@ impl TestApp {
 }
 
 /// An object of a create or rotation request (`ObjectUpload`).
+/// Raw SQL inside a held transaction (support code only).
+pub async fn sql_in(tx: &mut Tx, statement: &str) {
+    sqlx::query(sqlx::AssertSqlSafe(statement.to_string()))
+        .execute(&mut **tx)
+        .await
+        .unwrap();
+}
+
 pub fn object(id: &str, kind: &str, data_len: usize) -> Value {
     json!({ "id": id, "type": kind, "key_version": 1, "data": envelope(data_len) })
 }

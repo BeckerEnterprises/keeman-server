@@ -56,6 +56,8 @@ pub async fn revoke_others(
     }
     let now_text = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
+    // A session revoked meanwhile must not sign out the others.
+    session.confirm(&mut tx, &app).await?;
     let revoked =
         db::sessions::revoke_others(&mut tx, &session.user_id, &session.session_id, &now_text)
             .await?;
@@ -86,6 +88,7 @@ pub async fn revoke(
     }
     let now_text = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
+    session.confirm(&mut tx, &app).await?;
     if !db::sessions::is_active_of(&mut *tx, &session.user_id, &session_id, &now_text).await? {
         return Err(ApiError::new(ErrorCode::NotFound));
     }

@@ -5,6 +5,8 @@ use std::fs::OpenOptions;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::str::FromStr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use sqlx::sqlite::{
@@ -35,6 +37,17 @@ pub type Conn = SqliteConnection;
 pub struct Db {
     pub read: SqlitePool,
     write: SqlitePool,
+    /// Tasks waiting in `begin` for the write connection.
+    waiting: Arc<AtomicUsize>,
+}
+
+/// Counts a task as waiting until it has the connection or gives up.
+struct Waiting<'a>(&'a AtomicUsize);
+
+impl Drop for Waiting<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
@@ -70,7 +83,11 @@ impl Db {
             .max_connections(1)
             .connect_with(options(path)?)
             .await?;
-        Ok(Db { read, write })
+        Ok(Db {
+            read,
+            write,
+            waiting: Arc::default(),
+        })
     }
 
     /// Opens an existing database without creating or migrating it, for
@@ -90,7 +107,11 @@ impl Db {
             .max_connections(1)
             .connect_with(options(path)?.create_if_missing(false))
             .await?;
-        Ok(Db { read, write })
+        Ok(Db {
+            read,
+            write,
+            waiting: Arc::default(),
+        })
     }
 
     /// Applies pending migrations; refuses a database from a newer binary.
@@ -100,7 +121,15 @@ impl Db {
 
     /// A write transaction with `BEGIN IMMEDIATE`; rolls back on drop.
     pub async fn begin(&self) -> Result<Tx, sqlx::Error> {
+        self.waiting.fetch_add(1, Ordering::SeqCst);
+        let _waiting = Waiting(&self.waiting);
         self.write.begin_with("BEGIN IMMEDIATE").await
+    }
+
+    /// How many tasks wait for the write connection. Lets a test that holds
+    /// a transaction see that a request has reached its own one.
+    pub fn writers_waiting(&self) -> usize {
+        self.waiting.load(Ordering::SeqCst)
     }
 
     pub async fn ping(&self) -> bool {

@@ -7,7 +7,7 @@ mod support;
 use axum::http::StatusCode;
 use serde_json::{Value, json};
 use support::authenticator::Authenticator;
-use support::{Account, Req, TestApp, unique_ip};
+use support::{Account, Req, TestApp, sql_in, unique_ip};
 use time::Duration;
 
 async fn test_app() -> TestApp {
@@ -622,7 +622,111 @@ async fn concurrent_logins_cannot_reuse_a_counter() {
     key.counter = 3;
     let b = key.assert(&second_options["public_key"]);
     let response = webauthn_verify(&t, &second, &b).await;
-    assert_eq!(response.code(), "invalid_second_factor", "4 is stored now");
+    assert_eq!(response.code(), "invalid_second_factor", "5 is stored now");
+}
+
+fn verify_request(challenge: &str, credential: &Value) -> axum::http::Request<axum::body::Body> {
+    Req::post("/v1/auth/2fa/webauthn/verify")
+        .json(&json!({ "challenge_token": challenge, "credential": credential }))
+        .peer(&unique_ip())
+        .build()
+}
+
+#[tokio::test]
+async fn overlapping_logins_keep_the_counter_monotonic() {
+    let t = test_app().await;
+    let (alice, mut key) = with_passkey(&t, "alice@example.com").await;
+    let first = t.login_challenge(&alice).await;
+    let second = t.login_challenge(&alice).await;
+    let first_options = webauthn_options(&t, &first).await.json();
+    let second_options = webauthn_options(&t, &second).await.json();
+    key.counter = 4;
+    let a = key.assert(&first_options["public_key"]);
+    key.counter = 3;
+    let b = key.assert(&second_options["public_key"]);
+    // Both are checked while the stored counter is still 1; the first
+    // stores 5, then the second arrives with 4.
+    let tx = t.app.db.begin().await.unwrap();
+    let a = t.spawn(verify_request(&first, &a));
+    t.writers_waiting(1).await;
+    let b = t.spawn(verify_request(&second, &b));
+    t.writers_waiting(2).await;
+    tx.commit().await.unwrap();
+    assert_eq!(a.await.unwrap().status, StatusCode::OK);
+    assert_eq!(b.await.unwrap().code(), "invalid_second_factor");
+    let stored = t.text("SELECT passkey FROM webauthn_credentials").await;
+    assert_eq!(stored_counter(&stored), 5);
+}
+
+#[tokio::test]
+async fn a_passkey_removed_before_the_commit_fails() {
+    let t = test_app().await;
+    let (alice, mut key) = with_passkey(&t, "alice@example.com").await;
+    t.enable_totp(&alice).await;
+    let challenge = t.login_challenge(&alice).await;
+    let options = webauthn_options(&t, &challenge).await.json();
+    let credential = key.assert(&options["public_key"]);
+    let sessions = t.count("SELECT COUNT(*) FROM sessions").await;
+    let mut tx = t.app.db.begin().await.unwrap();
+    let pending = t.spawn(verify_request(&challenge, &credential));
+    t.writers_waiting(1).await;
+    sql_in(&mut tx, "DELETE FROM webauthn_credentials").await;
+    tx.commit().await.unwrap();
+    assert_eq!(pending.await.unwrap().code(), "invalid_second_factor");
+    assert_eq!(t.count("SELECT COUNT(*) FROM sessions").await, sessions);
+}
+
+#[tokio::test]
+async fn one_challenge_verified_twice_at_once_logs_in_once() {
+    let t = test_app().await;
+    let (alice, mut key) = with_passkey(&t, "alice@example.com").await;
+    let challenge = t.login_challenge(&alice).await;
+    let options = webauthn_options(&t, &challenge).await.json();
+    let credential = key.assert(&options["public_key"]);
+    let sessions = t.count("SELECT COUNT(*) FROM sessions").await;
+    let tx = t.app.db.begin().await.unwrap();
+    let first = t.spawn(verify_request(&challenge, &credential));
+    t.writers_waiting(1).await;
+    let second = t.spawn(verify_request(&challenge, &credential));
+    t.writers_waiting(2).await;
+    tx.commit().await.unwrap();
+    assert_eq!(first.await.unwrap().status, StatusCode::OK);
+    assert_eq!(second.await.unwrap().code(), "invalid_second_factor");
+    assert_eq!(t.count("SELECT COUNT(*) FROM sessions").await, sessions + 1);
+}
+
+#[tokio::test]
+async fn a_registration_overtaken_by_a_revocation_adds_no_passkey() {
+    let t = test_app().await;
+    let alice = t.register("alice@example.com").await;
+    let options = options_raw(&t, &alice, "Laptop").await.json();
+    let credential = Authenticator::new().register(&options["public_key"]);
+    let mut tx = t.app.db.begin().await.unwrap();
+    let pending = t.spawn(
+        Req::post("/v1/me/webauthn/register/verify")
+            .token(&alice.access_token)
+            .json(&json!({
+                "registration_token": options["registration_token"],
+                "credential": credential,
+            }))
+            .build(),
+    );
+    t.writers_waiting(1).await;
+    sql_in(
+        &mut tx,
+        &format!(
+            "UPDATE sessions SET revoked_at = '2026-10-23T08:00:00.000Z' WHERE id = '{0}';
+             DELETE FROM challenges WHERE session_id = '{0}';",
+            alice.session_id
+        ),
+    )
+    .await;
+    tx.commit().await.unwrap();
+    assert_eq!(pending.await.unwrap().code(), "challenge_invalid");
+    assert_eq!(
+        t.count("SELECT COUNT(*) FROM webauthn_credentials").await,
+        0
+    );
 }
 
 #[tokio::test]

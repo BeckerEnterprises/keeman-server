@@ -179,6 +179,23 @@ pub async fn recovery_by_email<'e>(
     .await
 }
 
+pub async fn recovery_by_id<'e>(
+    ex: impl SqliteExecutor<'e>,
+    id: &str,
+) -> Result<Option<RecoveryUser>, sqlx::Error> {
+    sqlx::query_as!(
+        RecoveryUser,
+        r#"SELECT id AS "id!", recovery_auth_hash, user_key_recovery_wrapped, disabled AS "disabled: bool",
+             totp_enabled AS "totp: bool",
+             EXISTS (SELECT 1 FROM webauthn_credentials w WHERE w.user_id = users.id) AS "webauthn!: bool",
+             EXISTS (SELECT 1 FROM backup_codes b WHERE b.user_id = users.id AND b.used_at IS NULL) AS "backup_codes!: bool"
+           FROM users WHERE id = ?"#,
+        id
+    )
+    .fetch_optional(ex)
+    .await
+}
+
 pub async fn user_key_recovery_wrapped<'e>(
     ex: impl SqliteExecutor<'e>,
     id: &str,

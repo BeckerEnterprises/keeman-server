@@ -254,6 +254,23 @@ pub async fn is_active_of<'e>(
     Ok(found.is_some())
 }
 
+/// Whether the session is active and its account enabled.
+pub async fn is_valid<'e>(
+    ex: impl SqliteExecutor<'e>,
+    session_id: &str,
+    now: &str,
+) -> Result<bool, sqlx::Error> {
+    let found = sqlx::query_scalar!(
+        r#"SELECT 1 AS "one!: i64" FROM sessions s JOIN users u ON u.id = s.user_id
+           WHERE s.id = ? AND s.revoked_at IS NULL AND s.refresh_expires_at > ? AND u.disabled = 0"#,
+        session_id,
+        now
+    )
+    .fetch_optional(ex)
+    .await?;
+    Ok(found.is_some())
+}
+
 pub struct SessionRow {
     pub id: String,
     pub device_name: String,

@@ -96,6 +96,13 @@ pub async fn reauth(
     let hint = ip.hint();
     let mut tx = app.db.begin().await?;
     throttle::ensure_unlocked(&mut tx, &app, &key).await?;
+    // The session may have been revoked and the password changed while the
+    // key was checked; only the state in this transaction counts.
+    session.confirm(&mut tx, &app).await?;
+    let valid = valid
+        && db::users::login_by_id(&mut *tx, &user.id)
+            .await?
+            .is_some_and(|current| current.auth_hash == user.auth_hash);
     if !valid {
         throttle::failure(&mut tx, &app, &key, Some(&user.id), &hint).await?;
         audit::log(
@@ -180,7 +187,7 @@ pub async fn put_password(
     State(app): State<Arc<App>>,
     session: AuthSession,
     ip: ClientIp,
-    _: Reauthed,
+    reauthed: Reauthed,
     _: NoQuery,
     StrictJson(body): StrictJson<PasswordBody>,
 ) -> ApiResult<StatusCode> {
@@ -189,7 +196,7 @@ pub async fn put_password(
     let now_text = format_timestamp(app.now());
     let hint = ip.hint();
     let user_id = session.user_id.as_str();
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     db::users::update_password(
         &mut *tx,
         user_id,
@@ -236,13 +243,13 @@ pub async fn put_recovery(
     State(app): State<Arc<App>>,
     session: AuthSession,
     ip: ClientIp,
-    _: Reauthed,
+    reauthed: Reauthed,
     _: NoQuery,
     StrictJson(body): StrictJson<RecoveryMaterial>,
 ) -> ApiResult<StatusCode> {
     let recovery_hash = app.passwords.hash(&body.auth_key.0).await?;
     let now_text = format_timestamp(app.now());
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     db::users::update_recovery(
         &mut *tx,
         &session.user_id,
@@ -272,12 +279,12 @@ pub async fn delete(
     State(app): State<Arc<App>>,
     session: AuthSession,
     ip: ClientIp,
-    _: Reauthed,
+    reauthed: Reauthed,
     _: NoQuery,
 ) -> ApiResult<Response> {
     let user_id = session.user_id.as_str();
     let now_text = format_timestamp(app.now());
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     if db::vaults::sole_owner_of_shared(&mut tx, user_id).await? {
         return Err(ApiError::new(ErrorCode::SoleOwnerOfSharedVault));
     }

@@ -66,7 +66,7 @@ pub(crate) async fn codes_for_first_factor(
 pub async fn totp_setup(
     State(app): State<Arc<App>>,
     session: AuthSession,
-    _: Reauthed,
+    reauthed: Reauthed,
     _: NoQuery,
 ) -> ApiResult<Json<Value>> {
     let user_id = session.user_id.as_str();
@@ -84,7 +84,7 @@ pub async fn totp_setup(
     let token = new_token().map_err(ApiError::internal)?;
     let setup = json!({ "secret": encode_base64url(&sealed) }).to_string();
     let now = app.now();
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     db::challenges::delete_for_user(&mut *tx, user_id, "totp_setup").await?;
     let challenge = db::challenges::NewChallenge {
         hash: &token.hash,
@@ -179,12 +179,12 @@ pub async fn totp_disable(
     State(app): State<Arc<App>>,
     session: AuthSession,
     ip: ClientIp,
-    _: Reauthed,
+    reauthed: Reauthed,
     _: NoQuery,
 ) -> ApiResult<StatusCode> {
     let user_id = session.user_id.as_str();
     let now_text = format_timestamp(app.now());
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     if !db::users::disable_totp(&mut *tx, user_id, &now_text).await? {
         return Err(state_invalid());
     }
@@ -209,7 +209,7 @@ pub async fn regenerate_backup_codes(
     State(app): State<Arc<App>>,
     session: AuthSession,
     ip: ClientIp,
-    _: Reauthed,
+    reauthed: Reauthed,
     _: NoQuery,
 ) -> ApiResult<Json<Value>> {
     let user_id = session.user_id.as_str();
@@ -221,7 +221,7 @@ pub async fn regenerate_backup_codes(
     }
     let (codes, hashes) = new_backup_codes(&app).await?;
     let now_text = format_timestamp(app.now());
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     if !factors(&mut tx, user_id).await?.any() {
         return Err(state_invalid());
     }

@@ -27,7 +27,8 @@ pub async fn insert<'e>(
     Ok(())
 }
 
-/// A reauth token bound to this session and not yet expired.
+/// A reauth token bound to this session and not yet expired, the session
+/// still active and the account enabled.
 pub async fn reauth_valid<'e>(
     ex: impl SqliteExecutor<'e>,
     hash: &[u8],
@@ -35,9 +36,13 @@ pub async fn reauth_valid<'e>(
     now: &str,
 ) -> Result<bool, sqlx::Error> {
     let found = sqlx::query_scalar!(
-        r#"SELECT 1 AS "one!: i64" FROM challenges WHERE token_hash = ? AND purpose = 'reauth' AND session_id = ? AND expires_at > ?"#,
+        r#"SELECT 1 AS "one!: i64" FROM challenges c
+           JOIN sessions s ON s.id = c.session_id JOIN users u ON u.id = s.user_id
+           WHERE c.token_hash = ? AND c.purpose = 'reauth' AND c.session_id = ? AND c.expires_at > ?
+             AND s.revoked_at IS NULL AND s.refresh_expires_at > ? AND u.disabled = 0"#,
         hash,
         session_id,
+        now,
         now
     )
     .fetch_optional(ex)
@@ -128,6 +133,25 @@ pub async fn count_failure<'e>(
     .fetch_optional(ex)
     .await?;
     Ok(attempts.unwrap_or(0))
+}
+
+/// Replaces the state only if it is still `expected`; returns whether it
+/// did, so of two concurrent requests only one uses a state up.
+pub async fn replace_state<'e>(
+    ex: impl SqliteExecutor<'e>,
+    hash: &[u8],
+    expected: Option<&str>,
+    state: &str,
+) -> Result<bool, sqlx::Error> {
+    let done = sqlx::query!(
+        "UPDATE challenges SET state = ? WHERE token_hash = ? AND state IS ?",
+        state,
+        hash,
+        expected
+    )
+    .execute(ex)
+    .await?;
+    Ok(done.rows_affected() == 1)
 }
 
 pub async fn set_state<'e>(

@@ -202,9 +202,8 @@ pub async fn webauthn_verify(
     if let Some(map) = state.as_object_mut() {
         map.remove("webauthn");
     }
-    let mut tx = app.db.begin().await?;
-    db::challenges::set_state(&mut *tx, &pending.hash, Some(&state.to_string())).await?;
-    tx.commit().await?;
+    let state = state.to_string();
+    let fail = || second_factor::fail_with_state(&app, &pending, "webauthn", &hint, &state);
     let authentication: PasskeyAuthentication =
         serde_json::from_value(authentication).map_err(ApiError::internal)?;
     let Ok(result) = app
@@ -213,32 +212,49 @@ pub async fn webauthn_verify(
     else {
         return Err(fail().await);
     };
-    // The passkey may have been removed since the options call.
-    let Some(stored) =
-        db::passkeys::by_credential(&app.db.read, &pending.user_id, result.cred_id()).await?
-    else {
+    if pending.disabled {
+        return Err(second_factor::disabled(&app, &pending, &hint).await);
+    }
+    let now_text = format_timestamp(app.now());
+    // The signature is checked; everything else happens in one transaction,
+    // so a concurrent login, a removed passkey or a second verification of
+    // the same challenge cannot slip in between check and write.
+    let mut tx = app.db.begin().await?;
+    let used_up = db::challenges::replace_state(
+        &mut *tx,
+        &pending.hash,
+        pending.stored_state.as_deref(),
+        &state,
+    )
+    .await?;
+    let stored = if used_up {
+        db::passkeys::by_credential(&mut *tx, &pending.user_id, result.cred_id()).await?
+    } else {
+        // Another verification of this challenge, or a newer options call.
+        None
+    };
+    let Some(stored) = stored else {
+        drop(tx);
         return Err(fail().await);
     };
-    let mut passkey: Passkey = serde_json::from_str(&stored.passkey).map_err(ApiError::internal)?;
-    // Counter against the stored value, not only the one at options time,
-    // so concurrent logins cannot reuse an older counter. The
-    // library exposes it only in the serialised state (`cred.counter`).
+    // The counter must grow over the stored value, read here. The library
+    // exposes it only in the serialised state (`cred.counter`).
     let current = serde_json::from_str::<Value>(&stored.passkey)
         .ok()
         .and_then(|v| v["cred"]["counter"].as_u64())
         .ok_or_else(|| ApiError::internal("stored passkey without counter"))?;
     let counter = u64::from(result.counter());
     if (counter > 0 || current > 0) && counter <= current {
+        drop(tx);
         return Err(fail().await);
     }
+    let mut passkey: Passkey = serde_json::from_str(&stored.passkey).map_err(ApiError::internal)?;
     passkey.update_credential(&result);
-    if pending.disabled {
-        return Err(second_factor::disabled(&app, &pending, &hint).await);
-    }
     let updated = serde_json::to_string(&passkey).map_err(ApiError::internal)?;
-    let now_text = format_timestamp(app.now());
-    let mut tx = app.db.begin().await?;
-    db::passkeys::record_use(&mut *tx, &stored.id, &updated, &now_text).await?;
+    if !db::passkeys::record_use(&mut *tx, &stored.id, &stored.passkey, &updated, &now_text).await?
+    {
+        return Err(ApiError::internal("passkey changed inside the transaction"));
+    }
     let response =
         second_factor::complete(&mut tx, &app, &pending, "webauthn", &hint, None).await?;
     tx.commit().await?;

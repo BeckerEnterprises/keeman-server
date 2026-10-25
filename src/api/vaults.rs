@@ -303,14 +303,14 @@ pub async fn delete(
     State(app): State<Arc<App>>,
     session: AuthSession,
     ip: ClientIp,
-    _: Reauthed,
+    reauthed: Reauthed,
     Path(path): Path<String>,
     _: NoQuery,
 ) -> ApiResult<StatusCode> {
     let vault_id = vault_id(&path)?;
     let user_id = session.user_id.as_str();
     let now = format_timestamp(app.now());
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     require(&mut tx, vault_id, user_id, Need::Owner).await?;
     let members = db::vaults::members(&mut tx, vault_id).await?;
     let attachments = db::attachments::ids_of_vault(&mut tx, vault_id).await?;

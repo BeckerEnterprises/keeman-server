@@ -99,6 +99,8 @@ pub struct Pending {
     pub purpose: String,
     pub user_id: String,
     pub state: Value,
+    /// The state as stored, to replace it only if nobody else did.
+    pub stored_state: Option<String>,
     pub disabled: bool,
     pub factors: Factors,
     throttle_key: [u8; 32],
@@ -135,6 +137,7 @@ pub async fn open(app: &App, token: &Token, check_lockout: bool) -> ApiResult<Pe
         purpose: challenge.purpose,
         user_id: challenge.user_id,
         state,
+        stored_state: challenge.state,
         disabled: user.disabled,
         factors: Factors {
             totp: user.totp,
@@ -148,7 +151,22 @@ pub async fn open(app: &App, token: &Token, check_lockout: bool) -> ApiResult<Pe
 /// A wrong second factor: counts at the challenge (5 end it) and towards
 /// the lockout, and is logged. Returns the error to answer.
 pub async fn fail(app: &App, pending: &Pending, method: &str, ip_hint: &str) -> ApiError {
-    match record_failure(app, pending, method, ip_hint).await {
+    match record_failure(app, pending, method, ip_hint, None).await {
+        Ok(()) => ApiError::new(ErrorCode::InvalidSecondFactor),
+        Err(error) => error,
+    }
+}
+
+/// Like [`fail`], and replaces the challenge state in the same transaction
+/// (used-up WebAuthn ceremony) unless it changed since it was read.
+pub async fn fail_with_state(
+    app: &App,
+    pending: &Pending,
+    method: &str,
+    ip_hint: &str,
+    state: &str,
+) -> ApiError {
+    match record_failure(app, pending, method, ip_hint, Some(state)).await {
         Ok(()) => ApiError::new(ErrorCode::InvalidSecondFactor),
         Err(error) => error,
     }
@@ -159,9 +177,19 @@ async fn record_failure(
     pending: &Pending,
     method: &str,
     ip_hint: &str,
+    state: Option<&str>,
 ) -> ApiResult<()> {
     let now_text = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
+    if let Some(state) = state {
+        db::challenges::replace_state(
+            &mut *tx,
+            &pending.hash,
+            pending.stored_state.as_deref(),
+            state,
+        )
+        .await?;
+    }
     let attempts = db::challenges::count_failure(&mut *tx, &pending.hash).await?;
     if attempts >= MAX_ATTEMPTS {
         db::challenges::delete(&mut *tx, &pending.hash).await?;
@@ -226,8 +254,9 @@ pub async fn complete(
     ip_hint: &str,
     backup_codes_remaining: Option<i64>,
 ) -> ApiResult<Response> {
+    // Gone if a concurrent request used it up, or if a password change,
+    // recovery or disabling the account deleted it after it was opened.
     if !db::challenges::delete(&mut *tx, &pending.hash).await? {
-        // Used up by a concurrent request.
         return Err(ApiError::new(ErrorCode::ChallengeInvalid));
     }
     throttle::success(tx, app, &pending.throttle_key).await?;

@@ -65,9 +65,17 @@ pub async fn start(
     let hint = ip.hint();
     let mut tx = app.db.begin().await?;
     throttle::ensure_unlocked(&mut tx, &app, &key).await?;
-    let user = match user {
-        Some(user) if valid => user,
-        user => {
+    // As at login: the check counts only while the checked hash is still
+    // stored (a new recovery key may have committed meanwhile).
+    let current = match &user {
+        Some(checked) if valid => db::users::recovery_by_id(&mut *tx, &checked.id)
+            .await?
+            .filter(|current| current.recovery_auth_hash == checked.recovery_auth_hash),
+        _ => None,
+    };
+    let user = match current {
+        Some(current) => current,
+        None => {
             let user_id = user.as_ref().map(|u| u.id.as_str());
             throttle::failure(&mut tx, &app, &key, user_id, &hint).await?;
             audit::log(

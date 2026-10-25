@@ -248,9 +248,18 @@ pub async fn login(
     let hint = ip.hint();
     let mut tx = app.db.begin().await?;
     throttle::ensure_unlocked(&mut tx, &app, &key).await?;
-    let user = match user {
-        Some(user) if valid => user,
-        user => {
+    // The key was checked before the write lock. It counts only if the
+    // checked hash is still the stored one: a password change or recovery
+    // may have committed meanwhile. Flags come from this read, too.
+    let current = match &user {
+        Some(checked) if valid => db::users::login_by_id(&mut *tx, &checked.id)
+            .await?
+            .filter(|current| current.auth_hash == checked.auth_hash),
+        _ => None,
+    };
+    let user = match current {
+        Some(current) => current,
+        None => {
             let user_id = user.as_ref().map(|u| u.id.as_str());
             throttle::failure(&mut tx, &app, &key, user_id, &hint).await?;
             audit::log(

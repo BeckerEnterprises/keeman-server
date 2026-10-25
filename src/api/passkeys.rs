@@ -51,7 +51,7 @@ pub struct RegisterOptionsBody {
 pub async fn register_options(
     State(app): State<Arc<App>>,
     session: AuthSession,
-    _: Reauthed,
+    reauthed: Reauthed,
     _: NoQuery,
     StrictJson(body): StrictJson<RegisterOptionsBody>,
 ) -> ApiResult<Json<Value>> {
@@ -83,7 +83,7 @@ pub async fn register_options(
         .cloned()
         .ok_or_else(|| ApiError::internal("creation options without publicKey"))?;
     let token = new_token().map_err(ApiError::internal)?;
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     db::challenges::delete_for_session(&mut *tx, &session.session_id, "webauthn_register").await?;
     let challenge = db::challenges::NewChallenge {
         hash: &token.hash,
@@ -131,32 +131,16 @@ pub async fn register_verify(
                 && c.session_id.as_deref() == Some(session.session_id.as_str())
         })
         .ok_or_else(invalid)?;
-    // From here on the token is used up, even if the check fails.
-    let mut tx = app.db.begin().await?;
-    if !db::challenges::delete(&mut *tx, &hash).await? {
-        return Err(invalid());
-    }
-    tx.commit().await?;
-    let state: Value = challenge
-        .state
-        .as_deref()
-        .and_then(|s| serde_json::from_str(s).ok())
-        .ok_or_else(|| ApiError::internal("registration without state"))?;
-    let name = state["name"]
-        .as_str()
-        .ok_or_else(|| ApiError::internal("registration without name"))?
-        .to_string();
-    let registration: PasskeyRegistration =
-        serde_json::from_value(state["registration"].clone()).map_err(ApiError::internal)?;
-    let passkey = app
-        .webauthn
-        .finish_passkey_registration(&body.credential, &registration)
-        .map_err(|_| rejected())?;
-    let credential_id: Vec<u8> = passkey.cred_id().to_vec();
-    if credential_id.len() > MAX_CREDENTIAL_ID_BYTES {
-        return Err(rejected());
-    }
-    let stored = serde_json::to_string(&passkey).map_err(ApiError::internal)?;
+    // From here on the token is used up, even if the check fails: on
+    // success in the transaction that stores the passkey, otherwise here.
+    let checked = check_registration(&app, &challenge, &body.credential);
+    let (name, credential_id, stored) = match checked {
+        Ok(checked) => checked,
+        Err(error) => {
+            use_up(&app, &hash).await?;
+            return Err(error);
+        }
+    };
     let was_first = !has_factor(&mut *app.db.read.acquire().await?, user_id).await?;
     let codes = if was_first {
         Some(new_backup_codes(&app).await?)
@@ -166,11 +150,20 @@ pub async fn register_verify(
 
     let id = Uuid::now_v7().to_string();
     let mut tx = app.db.begin().await?;
-    if db::passkeys::credential_exists(&mut *tx, &credential_id).await? {
-        return Err(rejected());
+    // Revoking the session deletes the token with it: no passkey then.
+    if !db::challenges::delete(&mut *tx, &hash).await? {
+        return Err(invalid());
     }
-    if db::passkeys::count(&mut *tx, user_id).await? >= MAX_PASSKEYS {
-        return Err(state_invalid());
+    let refused = if db::passkeys::credential_exists(&mut *tx, &credential_id).await? {
+        Some(rejected())
+    } else if db::passkeys::count(&mut *tx, user_id).await? >= MAX_PASSKEYS {
+        Some(state_invalid())
+    } else {
+        None
+    };
+    if let Some(error) = refused {
+        tx.commit().await?;
+        return Err(error);
     }
     let first = !has_factor(&mut tx, user_id).await?;
     let new = db::passkeys::NewPasskey {
@@ -200,6 +193,44 @@ pub async fn register_verify(
     Ok((StatusCode::CREATED, Json(body)).into_response())
 }
 
+/// Name, credential ID and stored state of a registration that passed the
+/// WebAuthn check.
+fn check_registration(
+    app: &App,
+    challenge: &db::challenges::ChallengeRow,
+    credential: &RegisterPublicKeyCredential,
+) -> ApiResult<(String, Vec<u8>, String)> {
+    let state: Value = challenge
+        .state
+        .as_deref()
+        .and_then(|s| serde_json::from_str(s).ok())
+        .ok_or_else(|| ApiError::internal("registration without state"))?;
+    let name = state["name"]
+        .as_str()
+        .ok_or_else(|| ApiError::internal("registration without name"))?
+        .to_string();
+    let registration: PasskeyRegistration =
+        serde_json::from_value(state["registration"].clone()).map_err(ApiError::internal)?;
+    let passkey = app
+        .webauthn
+        .finish_passkey_registration(credential, &registration)
+        .map_err(|_| rejected())?;
+    let credential_id: Vec<u8> = passkey.cred_id().to_vec();
+    if credential_id.len() > MAX_CREDENTIAL_ID_BYTES {
+        return Err(rejected());
+    }
+    let stored = serde_json::to_string(&passkey).map_err(ApiError::internal)?;
+    Ok((name, credential_id, stored))
+}
+
+/// Uses up a registration token whose check failed.
+async fn use_up(app: &App, hash: &[u8]) -> ApiResult<()> {
+    let mut tx = app.db.begin().await?;
+    db::challenges::delete(&mut *tx, hash).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
 pub async fn list(
     State(app): State<Arc<App>>,
     session: AuthSession,
@@ -225,7 +256,7 @@ pub async fn delete(
     State(app): State<Arc<App>>,
     session: AuthSession,
     ip: ClientIp,
-    _: Reauthed,
+    reauthed: Reauthed,
     Path(credential_id): Path<String>,
     _: NoQuery,
 ) -> ApiResult<StatusCode> {
@@ -234,7 +265,7 @@ pub async fn delete(
     }
     let user_id = session.user_id.as_str();
     let now_text = format_timestamp(app.now());
-    let mut tx = app.db.begin().await?;
+    let mut tx = reauthed.begin(&app).await?;
     if !db::passkeys::delete(&mut *tx, user_id, &credential_id).await? {
         return Err(ApiError::new(ErrorCode::NotFound));
     }

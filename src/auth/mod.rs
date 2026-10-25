@@ -20,8 +20,8 @@ use crate::app::App;
 use crate::client_ip;
 use crate::clock::format_timestamp;
 use crate::crypto::hash_token;
-use crate::db;
-use crate::error::{ApiError, ErrorCode};
+use crate::db::{self, Conn, Tx};
+use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::types::ClientType;
 
 pub const REAUTH_HEADER: &str = "x-keeman-reauth";
@@ -52,6 +52,20 @@ pub struct AuthSession {
     pub session_id: String,
     pub user_id: String,
     pub client_type: ClientType,
+}
+
+impl AuthSession {
+    /// Checks in a write transaction that the session is still active and
+    /// the account enabled: the middleware looked before a revocation or a
+    /// lock might have committed.
+    pub async fn confirm(&self, conn: &mut Conn, app: &App) -> ApiResult<()> {
+        let now = format_timestamp(app.now());
+        if db::sessions::is_valid(&mut *conn, &self.session_id, &now).await? {
+            Ok(())
+        } else {
+            Err(ApiError::new(ErrorCode::SessionInvalid))
+        }
+    }
 }
 
 impl<S: Send + Sync> FromRequestParts<S> for AuthSession {
@@ -93,9 +107,27 @@ impl<S: Send + Sync> FromRequestParts<S> for ClientIp {
     }
 }
 
-/// A valid `X-Keeman-Reauth` token of the current session;
-/// checked before the body is read.
-pub struct Reauthed;
+/// A valid `X-Keeman-Reauth` token of the current session; checked before
+/// the body is read and again by [`Reauthed::begin`].
+pub struct Reauthed {
+    hash: [u8; 32],
+    session_id: String,
+}
+
+impl Reauthed {
+    /// The write transaction of the sensitive action. The token is checked
+    /// again first: a revocation, password change or lock that committed
+    /// after the first check ends the request before anything changes.
+    pub async fn begin(&self, app: &App) -> ApiResult<Tx> {
+        let mut tx = app.db.begin().await?;
+        let now = format_timestamp(app.now());
+        if db::challenges::reauth_valid(&mut *tx, &self.hash, &self.session_id, &now).await? {
+            Ok(tx)
+        } else {
+            Err(ApiError::new(ErrorCode::ReauthRequired))
+        }
+    }
+}
 
 impl FromRequestParts<Arc<App>> for Reauthed {
     type Rejection = ApiError;
@@ -112,7 +144,10 @@ impl FromRequestParts<Arc<App>> for Reauthed {
         };
         let now = format_timestamp(app.now());
         if db::challenges::reauth_valid(&app.db.read, &hash, &session.session_id, &now).await? {
-            Ok(Reauthed)
+            Ok(Reauthed {
+                hash,
+                session_id: session.session_id,
+            })
         } else {
             Err(ApiError::new(ErrorCode::ReauthRequired))
         }

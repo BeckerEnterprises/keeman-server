@@ -112,22 +112,25 @@ pub async fn credential_exists<'e>(
     Ok(found.is_some())
 }
 
-/// Stores the state after a login and the time of use.
+/// Stores the state after a login and the time of use, only over the
+/// state `read` (compare and swap); returns whether it did.
 pub async fn record_use<'e>(
     ex: impl SqliteExecutor<'e>,
     id: &str,
+    read: &str,
     passkey: &str,
     now: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        "UPDATE webauthn_credentials SET passkey = ?, last_used_at = ? WHERE id = ?",
+) -> Result<bool, sqlx::Error> {
+    let done = sqlx::query!(
+        "UPDATE webauthn_credentials SET passkey = ?, last_used_at = ? WHERE id = ? AND passkey = ?",
         passkey,
         now,
-        id
+        id,
+        read
     )
     .execute(ex)
     .await?;
-    Ok(())
+    Ok(done.rows_affected() == 1)
 }
 
 /// Deletes a passkey of the account; returns whether it existed.
