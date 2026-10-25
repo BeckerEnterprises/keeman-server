@@ -469,7 +469,7 @@ async fn restore_needs_an_empty_target_and_backup_never_overwrites() {
 }
 
 #[tokio::test]
-async fn a_missing_file_is_reported_not_fatal() {
+async fn a_missing_file_ends_with_exit_code_3() {
     let s = source(false).await;
     let blob = s.dir.path().join(format!(
         "data/attachments/{}/{}.bin",
@@ -482,8 +482,13 @@ async fn a_missing_file_is_reported_not_fatal() {
         s.dir.path(),
         &["backup", "--out", archive.to_str().unwrap()],
     );
-    assert!(output.status.success(), "{}", stderr(&output));
+    assert_eq!(output.status.code(), Some(3), "{}", stderr(&output));
     assert!(stderr(&output).contains(&s.small), "{}", stderr(&output));
+    assert!(
+        stderr(&output).contains("backup incomplete"),
+        "{}",
+        stderr(&output)
+    );
     let manifest: Value = serde_json::from_slice(
         &entries(&archive)
             .into_iter()
@@ -653,4 +658,46 @@ async fn backup_refuses_a_missing_or_unmigrated_database() {
     );
     assert!(!dir.path().join("x.tar.zst").exists());
     assert!(!dir.path().join("x.tar.zst.partial").exists());
+}
+
+#[tokio::test]
+async fn an_incomplete_backup_keeps_the_older_ones() {
+    let s = source(false).await;
+    let folder = s.dir.path().join("backups");
+    std::fs::create_dir(&folder).unwrap();
+    std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let older = [
+        "keeman-20260101-120000.tar.zst",
+        "keeman-20260102-090000.tar.zst",
+    ];
+    for name in older {
+        std::fs::write(folder.join(name), b"x").unwrap();
+    }
+    std::fs::remove_file(s.dir.path().join(format!(
+        "data/attachments/{}/{}.bin",
+        &s.small[..2],
+        s.small
+    )))
+    .unwrap();
+    let output = run(
+        s.dir.path(),
+        &[
+            "backup",
+            "--dir",
+            "backups",
+            "--keep-daily",
+            "1",
+            "--keep-weekly",
+            "0",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(3), "{}", stderr(&output));
+    let written = PathBuf::from(stdout(&output).trim());
+    assert!(
+        s.dir.path().join(&written).exists(),
+        "the archive is written all the same"
+    );
+    for name in older {
+        assert!(folder.join(name).exists(), "{name} was kept");
+    }
 }

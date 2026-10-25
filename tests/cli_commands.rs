@@ -275,6 +275,57 @@ fn refuses_to_start_with_unsafe_configuration() {
             "rate_limits must all be positive",
         ),
         (
+            "too few idempotency entries",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "idempotency_entries_per_account = 1000",
+                    "idempotency_entries_per_account = 9",
+                )
+            }),
+            "idempotency_entries_per_account",
+        ),
+        (
+            "too few idempotency bytes",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "idempotency_bytes_per_account = 8388608",
+                    "idempotency_bytes_per_account = 1048575",
+                )
+            }),
+            "idempotency_bytes_per_account",
+        ),
+        (
+            "no sessions",
+            Box::new(|d: &Path| {
+                replace(d, "sessions_per_account = 100", "sessions_per_account = 0")
+            }),
+            "sessions_per_account",
+        ),
+        (
+            "no security log per account",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "security_log_per_account_per_day = 1000",
+                    "security_log_per_account_per_day = 0",
+                )
+            }),
+            "security_log",
+        ),
+        (
+            "no security log without an account",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "security_log_anonymous_per_day = 10000",
+                    "security_log_anonymous_per_day = 0",
+                )
+            }),
+            "security_log",
+        ),
+        (
             "token lifetime",
             Box::new(|d: &Path| {
                 replace(

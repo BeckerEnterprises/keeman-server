@@ -120,7 +120,7 @@ pub type CliResult<T> = Result<T, String>;
 /// Parses the command line and runs the requested command.
 pub fn run() -> ExitCode {
     match execute(Cli::parse()) {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => code,
         Err(message) => {
             eprintln!("error: {message}");
             ExitCode::FAILURE
@@ -128,7 +128,7 @@ pub fn run() -> ExitCode {
     }
 }
 
-fn execute(cli: Cli) -> CliResult<()> {
+fn execute(cli: Cli) -> CliResult<ExitCode> {
     if let Command::Init {
         dev,
         data_dir,
@@ -140,7 +140,8 @@ fn execute(cli: Cli) -> CliResult<()> {
             *dev,
             data_dir.as_deref(),
             secret_file.as_deref(),
-        );
+        )
+        .map(|()| ExitCode::SUCCESS);
     }
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -148,13 +149,16 @@ fn execute(cli: Cli) -> CliResult<()> {
         .map_err(|e| e.to_string())?;
     runtime.block_on(async move {
         let now = time::OffsetDateTime::now_utc();
-        match &cli.command {
-            Command::Restore { from, data_dir } => return restore::restore(from, data_dir).await,
-            Command::Check => return check::check(&cli.config, now).await,
-            _ => {}
+        let done = match &cli.command {
+            Command::Restore { from, data_dir } => Some(restore::restore(from, data_dir).await),
+            Command::Check => Some(check::check(&cli.config, now).await),
+            _ => None,
+        };
+        if let Some(done) = done {
+            return done.map(|()| ExitCode::SUCCESS);
         }
         let loaded = load(&cli.config)?;
-        match cli.command {
+        let done = match cli.command {
             Command::Init { .. } | Command::Restore { .. } | Command::Check => Ok(()),
             Command::Backup {
                 out,
@@ -168,7 +172,7 @@ fn execute(cli: Cli) -> CliResult<()> {
                     keep_daily,
                     keep_weekly,
                 };
-                backup::backup(&loaded.config, target, now).await
+                return backup::backup(&loaded.config, target, now).await;
             }
             Command::Serve => serve::serve(loaded).await,
             Command::Migrate => {
@@ -208,7 +212,8 @@ fn execute(cli: Cli) -> CliResult<()> {
                 db.close().await;
                 result
             }
-        }
+        };
+        done.map(|()| ExitCode::SUCCESS)
     })
 }
 
