@@ -330,7 +330,7 @@ pub async fn delete(
         )
         .await?;
     tx.commit().await?;
-    app.storage.remove_logged(&attachments).await;
+    app.remove_attachment_files(&attachments).await;
     notify.remove(user_id);
     app.hub.revoke_user(user_id);
     app.hub

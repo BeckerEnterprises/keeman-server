@@ -128,6 +128,8 @@ pub async fn create(
     let parts = body.size.div_ceil(PART_SIZE);
     let user_id = session.user_id.as_str();
     let now = format_timestamp(app.now());
+    // Row and files are checked while nothing else works on this ID.
+    let _lock = app.attachment_locks.lock(&body.attachment_id.0).await;
     let mut tx = app.db.begin().await?;
     require(&mut tx, vault_id, user_id, Need::Member).await?;
     if db::attachments::get(&mut tx, &body.attachment_id.0)
@@ -195,6 +197,7 @@ pub async fn put_part(
     if bytes.len() as u64 != part_len(size, parts, part) {
         return Err(ApiError::pointer("", "wrong part size"));
     }
+    let _lock = app.attachment_locks.lock(id).await;
     let temp = app
         .storage
         .stage_part(id, part, &bytes)
@@ -204,7 +207,7 @@ pub async fn put_part(
     // part is put in place, under the write lock that removals take too.
     // On any early return, dropping `temp` deletes the staged part.
     let mut tx = app.db.begin().await?;
-    still_uploading(&mut tx, vault_id, &session.user_id, id).await?;
+    still_uploading(&mut tx, vault_id, &session.user_id, &attachment).await?;
     app.storage
         .place_part(temp, id, part)
         .await
@@ -213,15 +216,23 @@ pub async fn put_part(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// The caller is still a member and the upload still takes parts.
+/// The caller is still a member, the upload still takes parts, and it is
+/// still the attachment seen before the body: one deleted and created again
+/// with the same ID meanwhile counts as gone.
 async fn still_uploading(
     conn: &mut Conn,
     vault_id: &str,
     user_id: &str,
-    id: &str,
+    seen: &db::attachments::Attachment,
 ) -> ApiResult<()> {
     require(conn, vault_id, user_id, Need::Member).await?;
-    if in_vault(conn, id, vault_id).await?.complete() {
+    let current = in_vault(conn, &seen.id, vault_id).await?;
+    if (&current.created_at, current.size, current.parts)
+        != (&seen.created_at, seen.size, seen.parts)
+    {
+        return Err(ApiError::new(ErrorCode::NotFound));
+    }
+    if current.complete() {
         return Err(ApiError::new(ErrorCode::Conflict));
     }
     Ok(())
@@ -245,7 +256,7 @@ pub async fn complete(
     // large requests, and one completion per attachment at a time. Who
     // waited reads the state again and finds it complete.
     let _slot = app.large_bodies.admit_slot(&session.user_id)?;
-    let _completing = app.completions.lock(id).await;
+    let _lock = app.attachment_locks.lock(id).await;
     let mut conn = app.db.read.acquire().await?;
     let attachment = in_vault(&mut conn, id, vault_id).await?;
     drop(conn);
@@ -405,12 +416,16 @@ pub async fn delete(
 ) -> ApiResult<StatusCode> {
     let vault_id = vault_id(&vault)?;
     let id = attachment_id(&attachment)?;
+    // Row and files go while nothing else works on this ID.
+    let _lock = app.attachment_locks.lock(id).await;
     let mut tx = app.db.begin().await?;
     require(&mut tx, vault_id, &session.user_id, Need::Member).await?;
     in_vault(&mut tx, id, vault_id).await?;
     db::attachments::delete(&mut tx, id).await?;
     tx.commit().await?;
-    app.storage.remove_logged(&[id.to_string()]).await;
+    if let Err(error) = app.storage.remove(id).await {
+        tracing::warn!(error = %error, "cannot delete attachment files");
+    }
     Ok(StatusCode::NO_CONTENT)
 }
 

@@ -224,14 +224,6 @@ impl Storage {
     }
 
     /// Like [`Storage::remove`], but only logs a failure.
-    pub async fn remove_logged(&self, ids: &[String]) {
-        for id in ids {
-            if let Err(error) = self.remove(id).await {
-                tracing::warn!(error = %error, "cannot delete attachment files");
-            }
-        }
-    }
-
     /// IDs of the complete blobs on disk.
     pub async fn blob_ids(&self) -> io::Result<BTreeSet<String>> {
         let mut ids = BTreeSet::new();

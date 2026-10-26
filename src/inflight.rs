@@ -2,7 +2,8 @@
 //! parts): a shared budget for the bodies in memory and a cap on such
 //! requests per account. Both are taken before the body is read and freed
 //! when the request ends, also when the client goes away. Attachment
-//! completions take a slot without a body and run one per attachment.
+//! completions take a slot without a body. Everything that creates or
+//! deletes the files of one attachment runs one at a time per ID.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -126,22 +127,24 @@ impl LargeBodies {
 
 type Locks = Arc<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>>;
 
-/// Completions of the same attachment run one after another.
+/// One lock per attachment ID: creating, storing a part, completing,
+/// deleting files and cleaning up run one after another, so a deletion that
+/// runs after its commit never meets a new attachment with the same ID.
 #[derive(Default)]
-pub struct Completions {
+pub struct AttachmentLocks {
     locks: Locks,
 }
 
-/// Held while an attachment is completed.
-pub struct Completing {
+/// Held while files of an attachment are created or deleted.
+pub struct AttachmentLock {
     guard: Option<OwnedMutexGuard<()>>,
     locks: Locks,
     id: String,
 }
 
-impl Completions {
-    /// Waits until no other completion of this attachment runs.
-    pub async fn lock(&self, id: &str) -> Completing {
+impl AttachmentLocks {
+    /// Waits until nothing else works on the files of this attachment.
+    pub async fn lock(&self, id: &str) -> AttachmentLock {
         let lock = self
             .locks
             .lock()
@@ -149,14 +152,23 @@ impl Completions {
             .entry(id.to_string())
             .or_default()
             .clone();
-        Completing {
+        AttachmentLock {
             guard: Some(lock.lock_owned().await),
             locks: self.locks.clone(),
             id: id.to_string(),
         }
     }
 
-    /// Attachments with a completion running or waiting (tests).
+    /// Holders and waiters of the lock of this ID (tests).
+    pub fn users(&self, id: &str) -> usize {
+        self.locks
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(id)
+            .map_or(0, |lock| Arc::strong_count(lock) - 1)
+    }
+
+    /// Attachments with work running or waiting (tests).
     pub fn len(&self) -> usize {
         self.locks
             .lock()
@@ -169,7 +181,7 @@ impl Completions {
     }
 }
 
-impl Drop for Completing {
+impl Drop for AttachmentLock {
     fn drop(&mut self) {
         self.guard = None;
         let mut locks = self

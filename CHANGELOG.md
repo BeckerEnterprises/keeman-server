@@ -23,6 +23,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - At most `limits.sessions_per_account` (default 100) active sessions per account; a new session revokes the least recently used.
 - The security log keeps at most `logging.security_log_per_account_per_day` entries per account, event and day (`logging.security_log_anonymous_per_day` without an account) and counts the rest in one `log_capped` entry. The migration `0003_limits.sql` runs on start.
 - Completions of the same attachment run one after another and take a slot for large requests; temporary files are deleted also when a request is cut off; creating an attachment whose ID still has files answers `409`.
+- Everything that creates or deletes the files of one attachment (create, part, complete, delete and the file cleanup after batches, vault and account deletion, rotations and the jobs) runs one at a time per attachment ID, so a deletion still running never meets a new attachment with the same ID; the cleanup job checks for an open upload again under that lock. A part for an attachment that was deleted and created again with the same ID while the part arrived answers `404`.
 
 ### Changed
 

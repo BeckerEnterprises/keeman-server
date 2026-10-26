@@ -658,7 +658,7 @@ async fn completions_of_one_attachment_assemble_once() {
     tx.commit().await.unwrap();
     assert_eq!(first.await.unwrap().status, StatusCode::NO_CONTENT);
     assert_eq!(second.await.unwrap().status, StatusCode::NO_CONTENT);
-    assert!(t.app.completions.is_empty());
+    assert!(t.app.attachment_locks.is_empty());
     assert_eq!(t.app.large_bodies.in_flight(&alice.user_id), 0);
     assert_eq!(t.download(&alice, &vault, &id, None).await.body, data);
 }
@@ -729,4 +729,112 @@ async fn an_id_whose_files_are_still_being_deleted_is_refused() {
         let response = t.create_attachment(&alice, &vault, &id, 100).await;
         assert_eq!(response.code(), "conflict", "{leftover}");
     }
+}
+
+/// Waits until `n` tasks hold or wait for the lock of this attachment.
+async fn lock_users(t: &TestApp, id: &str, n: usize) {
+    for _ in 0..500 {
+        if t.app.attachment_locks.users(id) >= n {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!(
+        "{} users of the lock, expected {n}",
+        t.app.attachment_locks.users(id)
+    );
+}
+
+#[tokio::test]
+async fn a_deletion_ends_before_the_same_id_is_created_again() {
+    let (t, alice, vault) = setup().await;
+    let id = t.stored(&alice, &vault, &blob(100)).await;
+    let blob_path = t.data_path(&format!("attachments/{}/{id}.bin", &id[..2]));
+    let held = t.app.attachment_locks.lock(&id).await;
+    let deletion = t.spawn(
+        Req::delete(&base(&vault, &id))
+            .token(&alice.access_token)
+            .build(),
+    );
+    lock_users(&t, &id, 2).await;
+    let creation = t.spawn(
+        Req::post(&format!("/v1/vaults/{vault}/attachments"))
+            .token(&alice.access_token)
+            .json(&json!({ "attachment_id": id, "entry_id": new_uuid(), "size": 100 }))
+            .build(),
+    );
+    lock_users(&t, &id, 3).await;
+    // Both wait: the old files are still there.
+    assert!(blob_path.exists());
+    drop(held);
+    assert_eq!(deletion.await.unwrap().status, StatusCode::NO_CONTENT);
+    assert_eq!(creation.await.unwrap().status, StatusCode::CREATED);
+    assert!(!blob_path.exists());
+    // The new upload is not touched by the old deletion.
+    assert_eq!(
+        t.put_part(&alice, &vault, &id, 0, &blob(100)).await.status,
+        StatusCode::NO_CONTENT
+    );
+    assert!(t.data_path(&format!("uploads/{id}/0.part")).exists());
+}
+
+#[tokio::test]
+async fn a_part_for_a_recreated_attachment_is_refused() {
+    let (t, alice, vault) = setup().await;
+    let id = new_uuid();
+    let created = t.create_attachment(&alice, &vault, &id, 100).await;
+    assert_eq!(created.status, StatusCode::CREATED);
+    // The part passes the checks before the body and is still arriving
+    // when the attachment is deleted and created again with this ID.
+    let (request, body) = Req::put(&format!("{}/parts/0", base(&vault, &id)))
+        .token(&alice.access_token)
+        .header("content-type", "application/octet-stream")
+        .header("content-length", "100")
+        .build_streaming();
+    let upload = t.spawn(request);
+    for _ in 0..200 {
+        if t.app.large_bodies.in_flight(&alice.user_id) == 1 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    assert_eq!(t.app.large_bodies.in_flight(&alice.user_id), 1);
+    let deleted = t
+        .call(Req::delete(&base(&vault, &id)).token(&alice.access_token))
+        .await;
+    assert_eq!(deleted.status, StatusCode::NO_CONTENT);
+    t.advance(Duration::milliseconds(1));
+    let again = t.create_attachment(&alice, &vault, &id, 200).await;
+    assert_eq!(again.status, StatusCode::CREATED);
+    body.send(axum::body::Bytes::from(blob(100))).await.unwrap();
+    drop(body);
+    assert_eq!(upload.await.unwrap().status, StatusCode::NOT_FOUND);
+    let upload_dir = t.data_path(&format!("uploads/{id}"));
+    let files = std::fs::read_dir(&upload_dir).map_or(0, Iterator::count);
+    assert_eq!(files, 0, "neither a part nor a temporary file");
+}
+
+#[tokio::test]
+async fn cleanup_keeps_an_upload_created_while_it_listed() {
+    let (t, alice, vault) = setup().await;
+    let id = new_uuid();
+    let dir = t.data_path(&format!("uploads/{id}"));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let held = t.app.attachment_locks.lock(&id).await;
+    let app = t.app.clone();
+    let job = tokio::spawn(async move { keeman_server::jobs::check_attachments(&app).await });
+    lock_users(&t, &id, 2).await;
+    // The upload is created after the job listed the directories.
+    t.sql(&format!(
+        "INSERT INTO attachments (id, vault_id, entry_id, size, parts, state, created_by, created_at)
+         VALUES ('{id}', '{vault}', '{}', 100, 1, 'uploading', '{}', '2026-10-23T08:00:00.000Z')",
+        new_uuid(),
+        alice.user_id
+    ))
+    .await;
+    drop(held);
+    let report = job.await.unwrap().unwrap();
+    assert_eq!(report.leftover_uploads, 0);
+    assert!(dir.exists());
 }

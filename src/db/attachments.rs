@@ -7,6 +7,9 @@ pub struct Attachment {
     pub size: i64,
     pub parts: i64,
     pub state: String,
+    /// With size and parts, tells a recreated attachment of the same ID
+    /// from the one a request saw before.
+    pub created_at: String,
 }
 
 impl Attachment {
@@ -18,7 +21,7 @@ impl Attachment {
 pub async fn get(conn: &mut Conn, id: &str) -> Result<Option<Attachment>, sqlx::Error> {
     sqlx::query_as!(
         Attachment,
-        r#"SELECT id AS "id!", vault_id, entry_id, size, parts, state FROM attachments WHERE id = ?"#,
+        r#"SELECT id AS "id!", vault_id, entry_id, size, parts, state, created_at FROM attachments WHERE id = ?"#,
         id
     )
     .fetch_optional(&mut *conn)

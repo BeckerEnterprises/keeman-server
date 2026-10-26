@@ -37,7 +37,7 @@ use crate::error::{ApiError, ApiResult, ErrorCode, ProblemData, StoredProblem};
 use crate::events::Hub;
 use crate::events::socket::{self, Timings};
 use crate::favicon::Favicons;
-use crate::inflight::{Completions, LargeBodies};
+use crate::inflight::{AttachmentLocks, LargeBodies};
 use crate::ratelimit::{Bucket, Quota, RateLimiter};
 use crate::storage::attachments::Storage;
 
@@ -52,8 +52,8 @@ pub struct App {
     pub limiter: RateLimiter,
     /// Budget and per-account cap for large request bodies.
     pub large_bodies: LargeBodies,
-    /// One completion per attachment at a time.
-    pub completions: Completions,
+    /// Work on the files of one attachment, one at a time.
+    pub attachment_locks: AttachmentLocks,
     pub trusted_proxies: Vec<IpNet>,
     pub client_ip_header: HeaderName,
     pub hub: Hub,
@@ -115,7 +115,7 @@ impl App {
                 config.limits.large_body_budget_bytes,
                 config.limits.large_requests_per_account,
             ),
-            completions: Completions::default(),
+            attachment_locks: AttachmentLocks::default(),
             config,
             db,
             clock,
@@ -143,6 +143,18 @@ impl App {
         self.limiter
             .check_all(buckets)
             .map_err(|seconds| ApiError::new(ErrorCode::RateLimited).retry_after(seconds))
+    }
+
+    /// Deletes the files of attachments whose rows are gone, each under its
+    /// attachment lock: a new attachment with the same ID waits until the
+    /// old files are gone. Failures are logged without the ID.
+    pub async fn remove_attachment_files(&self, ids: &[String]) {
+        for id in ids {
+            let _lock = self.attachment_locks.lock(id).await;
+            if let Err(error) = self.storage.remove(id).await {
+                tracing::warn!(error = %error, "cannot delete attachment files");
+            }
+        }
     }
 }
 

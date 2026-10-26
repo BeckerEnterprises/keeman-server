@@ -434,7 +434,7 @@ pub async fn batch(
     let response =
         idempotency::store(&mut tx, &app.config.limits, user_id, &request, &now, answer).await?;
     tx.commit().await?;
-    app.storage.remove_logged(&attachments).await;
+    app.remove_attachment_files(&attachments).await;
     if let Some((revision, members)) = event {
         app.hub.publish(
             members.iter().map(String::as_str),

@@ -54,7 +54,7 @@ pub async fn cleanup(app: &App) -> Result<Removed, sqlx::Error> {
     let mut tx = app.db.begin().await?;
     let stale = attachments::delete_stale_uploads(&mut tx, &before(Duration::hours(24))).await?;
     tx.commit().await?;
-    app.storage.remove_logged(&stale).await;
+    app.remove_attachment_files(&stale).await;
     removed.attachments = stale.len() as u64;
     check_attachments(app).await?;
     app.limiter.prune();
@@ -131,14 +131,27 @@ pub async fn check_attachments(app: &App) -> Result<AttachmentReport, sqlx::Erro
         .into_iter()
         .collect();
     drop(conn);
-    let leftover: Vec<String> = uploads.difference(&uploading).cloned().collect();
-    for id in &leftover {
+    let candidates: Vec<String> = uploads.difference(&uploading).cloned().collect();
+    let mut leftover = 0;
+    for id in &candidates {
+        // The listing is older than now: under the lock, an upload created
+        // meanwhile shows and keeps its directory.
+        let _lock = app.attachment_locks.lock(id).await;
+        let mut conn = app.db.read.acquire().await?;
+        let open = attachments::get(&mut conn, id)
+            .await?
+            .is_some_and(|a| !a.complete());
+        drop(conn);
+        if open {
+            continue;
+        }
+        leftover += 1;
         if let Err(error) = app.storage.remove_upload(id).await {
             tracing::warn!(error = %error, "cannot delete upload parts");
         }
     }
     let report = AttachmentReport {
-        leftover_uploads: leftover.len(),
+        leftover_uploads: leftover,
         orphaned_files: blobs
             .iter()
             .filter(|id| !complete.contains(*id) && !uploading.contains(*id))

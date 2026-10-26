@@ -339,7 +339,7 @@ pub async fn delete(
         )
         .await?;
     tx.commit().await?;
-    app.storage.remove_logged(&attachments).await;
+    app.remove_attachment_files(&attachments).await;
     app.hub.publish(
         members.iter().map(String::as_str),
         &events::vaults_changed(),

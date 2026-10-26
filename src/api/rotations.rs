@@ -634,7 +634,7 @@ pub async fn commit(
     };
     let (response, done) = idempotent(&app, user_id, &request, &now, work, discard).await?;
     if let Some(done) = done {
-        app.storage.remove_logged(&done.attachments).await;
+        app.remove_attachment_files(&done.attachments).await;
         app.hub.publish(
             done.members.iter().map(String::as_str),
             &events::vault_changed(&vault_id, done.revision),
