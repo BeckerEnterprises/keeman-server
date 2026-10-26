@@ -803,8 +803,8 @@ async fn a_part_for_a_recreated_attachment_is_refused() {
         .call(Req::delete(&base(&vault, &id)).token(&alice.access_token))
         .await;
     assert_eq!(deleted.status, StatusCode::NO_CONTENT);
-    t.advance(Duration::milliseconds(1));
-    let again = t.create_attachment(&alice, &vault, &id, 200).await;
+    // Same size, same millisecond: only the generation tells them apart.
+    let again = t.create_attachment(&alice, &vault, &id, 100).await;
     assert_eq!(again.status, StatusCode::CREATED);
     body.send(axum::body::Bytes::from(blob(100))).await.unwrap();
     drop(body);
@@ -837,4 +837,49 @@ async fn cleanup_keeps_an_upload_created_while_it_listed() {
     let report = job.await.unwrap().unwrap();
     assert_eq!(report.leftover_uploads, 0);
     assert!(dir.exists());
+}
+
+#[tokio::test]
+async fn a_late_file_cleanup_keeps_a_new_upload_with_the_same_id() {
+    let (t, alice, vault) = setup().await;
+    let entry = new_uuid();
+    let put = t
+        .batch(&alice, &vault, vec![put_op(&entry, "entry", None)])
+        .await;
+    let revision = put.json()["results"][0]["revision"].as_i64().unwrap();
+    // An upload without parts, so it leaves no files behind.
+    let id = new_uuid();
+    let created = t
+        .call(
+            Req::post(&format!("/v1/vaults/{vault}/attachments"))
+                .token(&alice.access_token)
+                .json(&json!({ "attachment_id": id, "entry_id": entry, "size": 100 })),
+        )
+        .await;
+    assert_eq!(created.status, StatusCode::CREATED);
+    // Deleting the entry drops the row at once; its file cleanup runs late.
+    let held = t.app.attachment_locks.lock(&id).await;
+    let deletion = t.spawn(
+        Req::post(&format!("/v1/vaults/{vault}/batch"))
+            .token(&alice.access_token)
+            .idem(&new_uuid())
+            .json(&json!({ "ops": [delete_op(&entry, revision)] }))
+            .build(),
+    );
+    lock_users(&t, &id, 2).await;
+    // Meanwhile the ID is created again and gets a part.
+    t.sql(&format!(
+        "INSERT INTO attachments (id, vault_id, entry_id, size, parts, state, created_by, created_at, generation)
+         VALUES ('{id}', '{vault}', '{}', 100, 1, 'uploading', '{}', '2026-10-23T08:00:00.000Z', 'new')",
+        new_uuid(),
+        alice.user_id
+    ))
+    .await;
+    let dir = t.data_path(&format!("uploads/{id}"));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+    std::fs::write(dir.join("0.part"), blob(100)).unwrap();
+    drop(held);
+    assert_eq!(deletion.await.unwrap().status, StatusCode::OK);
+    assert!(dir.join("0.part").exists(), "the new part stays");
 }

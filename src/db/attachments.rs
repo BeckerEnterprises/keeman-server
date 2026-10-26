@@ -7,9 +7,9 @@ pub struct Attachment {
     pub size: i64,
     pub parts: i64,
     pub state: String,
-    /// With size and parts, tells a recreated attachment of the same ID
-    /// from the one a request saw before.
-    pub created_at: String,
+    /// Random per created row: tells an attachment recreated with the same
+    /// ID from the one a request saw before.
+    pub generation: String,
 }
 
 impl Attachment {
@@ -21,7 +21,7 @@ impl Attachment {
 pub async fn get(conn: &mut Conn, id: &str) -> Result<Option<Attachment>, sqlx::Error> {
     sqlx::query_as!(
         Attachment,
-        r#"SELECT id AS "id!", vault_id, entry_id, size, parts, state, created_at FROM attachments WHERE id = ?"#,
+        r#"SELECT id AS "id!", vault_id, entry_id, size, parts, state, generation FROM attachments WHERE id = ?"#,
         id
     )
     .fetch_optional(&mut *conn)
@@ -36,19 +36,21 @@ pub struct NewAttachment<'a> {
     pub parts: i64,
     pub created_by: &'a str,
     pub now: &'a str,
+    pub generation: &'a str,
 }
 
 pub async fn insert(conn: &mut Conn, a: &NewAttachment<'_>) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "INSERT INTO attachments (id, vault_id, entry_id, size, parts, state, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, 'uploading', ?, ?)",
+        "INSERT INTO attachments (id, vault_id, entry_id, size, parts, state, created_by, created_at, generation)
+         VALUES (?, ?, ?, ?, ?, 'uploading', ?, ?, ?)",
         a.id,
         a.vault_id,
         a.entry_id,
         a.size,
         a.parts,
         a.created_by,
-        a.now
+        a.now,
+        a.generation
     )
     .execute(&mut *conn)
     .await?;

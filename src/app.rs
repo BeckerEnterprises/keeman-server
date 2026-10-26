@@ -146,11 +146,25 @@ impl App {
     }
 
     /// Deletes the files of attachments whose rows are gone, each under its
-    /// attachment lock: a new attachment with the same ID waits until the
-    /// old files are gone. Failures are logged without the ID.
+    /// attachment lock. The row is read again under the lock: an attachment
+    /// created with the same ID after the deletion committed (possible when
+    /// the old one had no files) owns whatever is there now, so it stays.
+    /// Failures are logged without the ID; leftovers show up in the job.
     pub async fn remove_attachment_files(&self, ids: &[String]) {
         for id in ids {
             let _lock = self.attachment_locks.lock(id).await;
+            let current = match self.db.read.acquire().await {
+                Ok(mut conn) => crate::db::attachments::get(&mut conn, id).await,
+                Err(error) => Err(error),
+            };
+            match current {
+                Ok(Some(_)) => continue,
+                Ok(None) => {}
+                Err(error) => {
+                    tracing::warn!(error = %error, "cannot check an attachment before deleting its files");
+                    continue;
+                }
+            }
             if let Err(error) = self.storage.remove(id).await {
                 tracing::warn!(error = %error, "cannot delete attachment files");
             }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", vault_id, entry_id, size, parts, state, created_at FROM attachments WHERE id = ?",
+  "query": "SELECT id AS \"id!\", vault_id, entry_id, size, parts, state, generation FROM attachments WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -70,13 +70,13 @@
         }
       },
       {
-        "name": "created_at",
+        "name": "generation",
         "ordinal": 6,
         "type_info": "Text",
         "origin": {
           "Table": {
             "table": "attachments",
-            "name": "created_at"
+            "name": "generation"
           }
         }
       }
@@ -94,5 +94,5 @@
       false
     ]
   },
-  "hash": "c87f36e8b9fa2a4b0a825558081b6a24839100edff925ffb17f1cf16f579a69e"
+  "hash": "d61a6741b127d535d589bafd1c82e2bf7139e94e1fb4fbb169697d5a899fd67d"
 }

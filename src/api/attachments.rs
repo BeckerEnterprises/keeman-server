@@ -15,12 +15,13 @@ use super::vaults::{Need, require, vault_id};
 use crate::app::App;
 use crate::auth::{AuthSession, NoQuery};
 use crate::clock::format_timestamp;
+use crate::crypto::random_bytes;
 use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::extract::{StrictJson, octet_stream};
 use crate::quota;
 use crate::storage::attachments::body;
-use crate::types::{Uuid, is_canonical_uuid};
+use crate::types::{Uuid, encode_base64url, is_canonical_uuid};
 
 /// Size of every part but the last (fixed in API v1).
 pub const PART_SIZE: u64 = 8 * 1024 * 1024;
@@ -149,6 +150,8 @@ pub async fn create(
         return Err(ApiError::new(ErrorCode::Conflict));
     }
     check_quota(&app, &mut tx, vault_id, user_id, body.size).await?;
+    // A timestamp may repeat after a delete; parts compare this instead.
+    let generation = encode_base64url(&random_bytes::<16>().map_err(ApiError::internal)?);
     db::attachments::insert(
         &mut tx,
         &db::attachments::NewAttachment {
@@ -159,6 +162,7 @@ pub async fn create(
             parts: signed(parts),
             created_by: user_id,
             now: &now,
+            generation: &generation,
         },
     )
     .await?;
@@ -217,8 +221,8 @@ pub async fn put_part(
 }
 
 /// The caller is still a member, the upload still takes parts, and it is
-/// still the attachment seen before the body: one deleted and created again
-/// with the same ID meanwhile counts as gone.
+/// still the attachment seen before the body (same random generation): one
+/// deleted and created again with the same ID meanwhile counts as gone.
 async fn still_uploading(
     conn: &mut Conn,
     vault_id: &str,
@@ -227,9 +231,7 @@ async fn still_uploading(
 ) -> ApiResult<()> {
     require(conn, vault_id, user_id, Need::Member).await?;
     let current = in_vault(conn, &seen.id, vault_id).await?;
-    if (&current.created_at, current.size, current.parts)
-        != (&seen.created_at, seen.size, seen.parts)
-    {
+    if current.generation != seen.generation {
         return Err(ApiError::new(ErrorCode::NotFound));
     }
     if current.complete() {
