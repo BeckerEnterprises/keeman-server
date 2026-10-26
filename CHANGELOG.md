@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-26
+
+Security release after a code review and a whitebox security audit of 0.1.0. KeeMan is still in early development: do not use it with real passwords yet.
+
+Upgrading: the migrations `0002_quota.sql`, `0003_limits.sql` and `0004_attachment_generation.sql` run on start; back up first. The new limits have defaults and need no configuration. `backup` now ends with exit code 3 when attachment files are missing, which monitoring may report as a failure.
+
 ### Security
 
 - A login lockout that begins while a credential check is still running now applies to that check: a failure or success during a lock changes nothing, so parallel guesses can no longer lift a fresh lock.
@@ -16,7 +22,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - Every WebSocket send has a time limit of 10 seconds, so a client that stops reading no longer keeps its connection and slot forever.
 - Favicon pages and images are parsed, decoded and scaled on the blocking thread pool instead of the async workers.
 - The compose example trusts only the proxy's fixed address to set the client IP; before, any container in a private network could fake it for the rate limits.
-
 - Login, recovery start and reauth check the credential again in their write transaction: a password change or new recovery key committed while the key was being verified makes the attempt a failure, and disabled state and second factor come from that transaction. Endpoints that need reauth check the token, the session and the account again first thing in their transaction, and the session endpoints check the calling session, so a revocation or password change can no longer be overtaken by a request already running.
 - A passkey login rereads the passkey and its signature counter in the transaction that completes it and stores the counter only over the state it read; concurrent logins keep the counter monotonic, and a passkey removed meanwhile fails. Registering a passkey uses its token up in the transaction that stores it.
 - Answers stored for idempotency keys have a budget per account (`limits.idempotency_entries_per_account`, `limits.idempotency_bytes_per_account`); the oldest give way.
@@ -50,4 +55,5 @@ First public release. KeeMan is in early development: do not use it with real pa
 - systemd units for the service and for daily backups (`deploy/`), a deploy script, a container image (`Dockerfile`, non-root) and a compose example with the web client and Caddy (`deploy/compose/`).
 - README: building, setup, backup and restore, copies elsewhere, containers, and the duties of the AGPL for modified versions.
 
+[0.1.1]: https://github.com/BeckerEnterprises/keeman-server/releases/tag/v0.1.1
 [0.1.0]: https://github.com/BeckerEnterprises/keeman-server/releases/tag/v0.1.0
