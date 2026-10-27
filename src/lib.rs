@@ -20,6 +20,7 @@ pub mod idempotency;
 pub mod inflight;
 pub mod jobs;
 pub mod logging;
+pub mod manifest_ids;
 pub mod quota;
 pub mod ratelimit;
 pub mod storage;

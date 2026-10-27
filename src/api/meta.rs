@@ -22,7 +22,8 @@ pub async fn config(State(app): State<Arc<App>>, _: NoQuery) -> Json<Value> {
         "api_version": 1,
         "registration": c.security.registration.as_str(),
         "webauthn": { "rp_id": c.webauthn.rp_id },
-        "features": { "favicon": c.features.favicon },
+        // The manifest is part of the API, not something an operator turns off.
+        "features": { "favicon": c.features.favicon, "manifest": true },
         "limits": { "attachment_max_bytes": c.limits.attachment_max_bytes, "batch_max_ops": BATCH_MAX_OPS },
     }))
 }

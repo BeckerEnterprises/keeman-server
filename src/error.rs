@@ -71,6 +71,7 @@ error_codes! {
     FaviconNotFound => ("favicon_not_found", UNPROCESSABLE_ENTITY, "Favicon not found"),
     IdempotencyKeyReused => ("idempotency_key_reused", UNPROCESSABLE_ENTITY, "Idempotency key reused"),
     AttachmentIncomplete => ("attachment_incomplete", UNPROCESSABLE_ENTITY, "Attachment incomplete"),
+    ManifestRequired => ("manifest_required", UNPROCESSABLE_ENTITY, "Manifest required"),
     RateLimited => ("rate_limited", TOO_MANY_REQUESTS, "Too many requests"),
     InternalError => ("internal_error", INTERNAL_SERVER_ERROR, "Internal error"),
     QuotaExceeded => ("quota_exceeded", INSUFFICIENT_STORAGE, "Quota exceeded"),

@@ -19,6 +19,7 @@ use crate::error::{ApiError, ApiResult, Conflict, ErrorCode};
 use crate::events;
 use crate::extract::{LARGE_BODY_LIMIT, parse_query};
 use crate::idempotency;
+use crate::manifest_ids::ManifestIds;
 use crate::quota;
 use crate::types::{
     MAX_SAFE_INTEGER, ObjectData, ObjectType, Positive, Uuid, decode_base64url, encode_base64url,
@@ -234,7 +235,7 @@ pub struct BatchBody {
 }
 
 /// Structural checks before the transaction.
-fn check_batch(vault_id: &str, ops: &[Op]) -> ApiResult<()> {
+fn check_batch(vault_id: &str, manifest: &ManifestIds, ops: &[Op]) -> ApiResult<()> {
     if ops.is_empty() || ops.len() > MAX_OBJECTS {
         return Err(ApiError::pointer("/ops", "between 1 and 500 ops"));
     }
@@ -245,14 +246,24 @@ fn check_batch(vault_id: &str, ops: &[Op]) -> ApiResult<()> {
             return Err(ApiError::pointer(pointer(), "duplicate ID"));
         }
         let is_vault_id = op.id() == vault_id;
+        let is_manifest_id = manifest.contains(op.id());
         match op {
             Op::Delete(_) if is_vault_id => {
                 return Err(ApiError::pointer(pointer(), "vault_meta cannot be deleted"));
+            }
+            Op::Delete(_) if is_manifest_id => {
+                return Err(ApiError::pointer(pointer(), "a manifest cannot be deleted"));
             }
             Op::Put(put) if (put.kind == ObjectType::VaultMeta) != is_vault_id => {
                 return Err(ApiError::pointer(
                     pointer(),
                     "only vault_meta has the vault ID",
+                ));
+            }
+            Op::Put(put) if (put.kind == ObjectType::Manifest) != is_manifest_id => {
+                return Err(ApiError::pointer(
+                    pointer(),
+                    "only a manifest has a manifest ID",
                 ));
             }
             _ => {}
@@ -288,10 +299,12 @@ struct Applied {
     attachments: Vec<String>,
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn batch_in(
     conn: &mut Conn,
     user_id: &str,
     vault_id: &str,
+    manifest_root: &str,
     ops: &[Op],
     quota: u64,
     now: &str,
@@ -300,7 +313,12 @@ async fn batch_in(
     let vault = db::vaults::vault(conn, vault_id)
         .await?
         .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;
-    let ids: Vec<&str> = ops.iter().map(Op::id).collect();
+    // The manifest root comes along to tell whether the vault has one.
+    let ids: Vec<&str> = ops
+        .iter()
+        .map(Op::id)
+        .chain(std::iter::once(manifest_root))
+        .collect();
     let ids = serde_json::to_string(&ids).map_err(ApiError::internal)?;
     let stored: HashMap<String, db::objects::Existing> =
         db::objects::existing(conn, vault_id, &ids)
@@ -322,6 +340,15 @@ async fn batch_in(
         return Err(
             ApiError::new(ErrorCode::StaleKeyVersion).current_key_version(vault.key_version)
         );
+    }
+    // Once a vault has a manifest, a batch must write it; an outdated client
+    // would otherwise change objects behind it.
+    let has_manifest = stored.get(manifest_root).is_some_and(|root| !root.deleted);
+    let writes_root = ops
+        .iter()
+        .any(|op| matches!(op, Op::Put(_)) && op.id() == manifest_root);
+    if has_manifest && !writes_root {
+        return Err(ApiError::new(ErrorCode::ManifestRequired));
     }
     let conflicts: Vec<Conflict> = ops
         .iter()
@@ -411,7 +438,8 @@ pub async fn batch(
         .admit(user, request.headers(), LARGE_BODY_LIMIT)
         .await?;
     let (request, body): (_, BatchBody) = idempotency::read(request, LARGE_BODY_LIMIT).await?;
-    check_batch(&vault_id, &body.ops)?;
+    let manifest = ManifestIds::of(&vault_id);
+    check_batch(&vault_id, &manifest, &body.ops)?;
     let now = format_timestamp(app.now());
     let user_id = session.user_id.as_str();
     let mut tx = app.db.begin().await?;
@@ -420,7 +448,16 @@ pub async fn batch(
     }
     let mut savepoint = db::savepoint(&mut tx).await?;
     let quota = app.config.limits.user_quota_bytes;
-    let result = batch_in(&mut savepoint, user_id, &vault_id, &body.ops, quota, &now).await;
+    let result = batch_in(
+        &mut savepoint,
+        user_id,
+        &vault_id,
+        &manifest.root,
+        &body.ops,
+        quota,
+        &now,
+    )
+    .await;
     let answer = idempotency::settle(savepoint, result).await?;
     let event = answer
         .as_ref()

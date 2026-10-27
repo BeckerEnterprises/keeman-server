@@ -21,6 +21,7 @@ use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
 use crate::extract::{BODY_LIMIT, LARGE_BODY_LIMIT};
 use crate::idempotency;
+use crate::manifest_ids::ManifestIds;
 use crate::quota;
 use crate::types::{KeyBox, ObjectData, ObjectType, Positive, Uuid, WrappedKey};
 
@@ -362,11 +363,18 @@ fn check_commit(vault_id: &str, user_id: &str, body: &CommitBody) -> ApiResult<(
         ));
     }
     let mut dropped = HashSet::new();
+    let manifest = ManifestIds::of(vault_id);
     for (i, object) in body.drop_objects.iter().enumerate() {
         if object.id.0 == vault_id {
             return Err(ApiError::pointer(
                 format!("/drop_objects/{i}/id"),
                 "vault_meta is never dropped",
+            ));
+        }
+        if manifest.contains(object.id.0.as_str()) {
+            return Err(ApiError::pointer(
+                format!("/drop_objects/{i}/id"),
+                "a manifest is never dropped",
             ));
         }
         if !dropped.insert(object.id.0.as_str()) {

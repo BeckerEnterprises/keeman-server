@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+Upgrading: the migration `0005_manifest.sql` runs on start and rebuilds the `objects` table, which briefly needs about twice its size on disk; back up first. An older binary does not start with the migrated database. Web clients opened before the update stop syncing a vault once it has a manifest and their saves are refused with `422`; reloading the page fixes this.
+
+### Added
+
+- Object type `manifest` for the authenticated vault manifest that clients keep in every vault: an encrypted list of all live objects, so a server can no longer withhold or replay objects unnoticed. The server stores it like any other object and never reads it.
+- Manifest objects are allowed only under 65 IDs derived from the vault ID (BLAKE2b, crate `blake2`), and no other type may use these IDs; they can be neither deleted nor dropped in a key rotation (`400`).
+- Once a vault has a manifest root, every batch must write it, otherwise `422 manifest_required` (stored for the idempotency key). An outdated client can then no longer change objects behind the manifest.
+- `GET /v1/config` reports `features.manifest`.
+
 ## [0.1.1] - 2026-10-26
 
 Security release after a code review and a whitebox security audit of 0.1.0. KeeMan is still in early development: do not use it with real passwords yet.

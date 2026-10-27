@@ -238,6 +238,7 @@ pub enum ObjectType {
     Group,
     Entry,
     Icon,
+    Manifest,
 }
 
 impl ObjectType {
@@ -247,6 +248,7 @@ impl ObjectType {
             ObjectType::Group => "group",
             ObjectType::Entry => "entry",
             ObjectType::Icon => "icon",
+            ObjectType::Manifest => "manifest",
         }
     }
 
@@ -256,6 +258,7 @@ impl ObjectType {
             ObjectType::Group,
             ObjectType::Entry,
             ObjectType::Icon,
+            ObjectType::Manifest,
         ]
         .into_iter()
         .find(|t| t.as_str() == text)

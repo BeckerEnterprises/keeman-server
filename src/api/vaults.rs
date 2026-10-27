@@ -20,6 +20,7 @@ use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
 use crate::extract::BODY_LIMIT;
 use crate::idempotency;
+use crate::manifest_ids::ManifestIds;
 use crate::quota;
 use crate::types::{
     ObjectData, ObjectType, Positive, Uuid, WrappedKey, encode_base64url, is_canonical_uuid,
@@ -187,6 +188,7 @@ fn check_create(body: &CreateBody) -> ApiResult<()> {
     }
     let mut seen = HashSet::new();
     let mut meta = false;
+    let manifest = ManifestIds::of(body.vault_id.0.as_str());
     for (i, object) in body.objects.iter().enumerate() {
         if object.key_version.0 != 1 {
             return Err(ApiError::pointer(
@@ -216,6 +218,12 @@ fn check_create(body: &CreateBody) -> ApiResult<()> {
                 ));
             }
             (false, false) => {}
+        }
+        if (object.kind == ObjectType::Manifest) != manifest.contains(object.id.0.as_str()) {
+            return Err(ApiError::pointer(
+                format!("/objects/{i}/id"),
+                "only a manifest has a manifest ID",
+            ));
         }
     }
     if !meta {

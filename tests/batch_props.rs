@@ -1,6 +1,7 @@
 //! Property tests of the batch semantics: two clients with possibly
 //! stale views send random batches; the server must behave exactly like a
-//! simple model, so no update is ever lost.
+//! simple model, so no update is ever lost. Once the manifest root exists,
+//! a batch without it is refused.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod support;
@@ -9,6 +10,7 @@ use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use axum::http::StatusCode;
+use keeman_server::manifest_ids::root_id;
 use proptest::prelude::*;
 use proptest::test_runner::{Config, TestCaseError, TestRunner};
 use serde_json::{Value, json};
@@ -31,6 +33,8 @@ enum OpChoice {
     Create(usize),
     Update(usize),
     Delete(usize),
+    /// Writes the manifest root (creates it if the client has not seen it).
+    Root,
 }
 
 fn action() -> impl Strategy<Value = Action> {
@@ -38,6 +42,7 @@ fn action() -> impl Strategy<Value = Action> {
         (0..KINDS.len()).prop_map(OpChoice::Create),
         any::<usize>().prop_map(OpChoice::Update),
         any::<usize>().prop_map(OpChoice::Delete),
+        Just(OpChoice::Root),
     ];
     prop_oneof![
         4 => (0..2usize, prop::collection::vec(op, 1..5))
@@ -71,6 +76,12 @@ struct View {
 }
 
 impl Model {
+    /// Once the root exists, a batch without a put on it is refused.
+    fn requires_root(&self, ops: &[Value], root: &str) -> bool {
+        self.objects.get(root).is_some_and(|s| !s.deleted)
+            && !ops.iter().any(|op| op["op"] == "put" && op["id"] == root)
+    }
+
     /// The expected conflict list; empty means the batch applies.
     fn conflicts(&self, ops: &[Value]) -> Vec<Value> {
         ops.iter()
@@ -114,17 +125,27 @@ impl Model {
     }
 }
 
-fn build_ops(view: &View, choices: &[OpChoice]) -> Vec<Value> {
-    // `vault_meta` cannot be deleted (a structural 400), so it is left out.
+fn build_ops(view: &View, root: &str, choices: &[OpChoice]) -> Vec<Value> {
+    // `vault_meta` and the manifest cannot be deleted (a structural 400), so
+    // they are left out; the root has its own choice.
     let known: Vec<(&String, &Stored)> = view
         .objects
         .iter()
-        .filter(|(_, s)| !s.deleted && s.kind != "vault_meta")
+        .filter(|(_, s)| !s.deleted && s.kind != "vault_meta" && s.kind != "manifest")
         .collect();
     let mut used = std::collections::HashSet::new();
     let mut ops = Vec::new();
     for choice in choices {
         match choice {
+            OpChoice::Root => {
+                if used.insert(root.to_string()) {
+                    ops.push(json!({
+                        "op": "put", "id": root, "type": "manifest", "key_version": 1,
+                        "expected_revision": view.objects.get(root).map(|s| s.revision),
+                        "data": envelope(60),
+                    }));
+                }
+            }
             OpChoice::Create(kind) => ops.push(json!({
                 "op": "put", "id": new_uuid(), "type": KINDS[*kind], "key_version": 1,
                 "expected_revision": null, "data": envelope(60),
@@ -190,6 +211,7 @@ async fn sync(
 /// Batches applied and rejected with conflicts, over all cases.
 static APPLIED: AtomicUsize = AtomicUsize::new(0);
 static CONFLICTED: AtomicUsize = AtomicUsize::new(0);
+static REQUIRED: AtomicUsize = AtomicUsize::new(0);
 
 async fn run_case(
     t: &TestApp,
@@ -200,6 +222,7 @@ async fn run_case(
     t.add_member(&vault_id, &clients[1], "member", "active")
         .await;
     let path = format!("/v1/vaults/{vault_id}/batch");
+    let root = root_id(&vault_id);
     let (initial, revision) = sync(t, &clients[0], &vault_id, 0, 500).await;
     let mut model = Model {
         revision,
@@ -215,7 +238,7 @@ async fn run_case(
     for action in actions {
         match action {
             Action::Batch { client, ops } => {
-                let ops = build_ops(&views[client], &ops);
+                let ops = build_ops(&views[client], &root, &ops);
                 if ops.is_empty() {
                     continue;
                 }
@@ -230,7 +253,11 @@ async fn run_case(
                     )
                     .await;
                 let conflicts = model.conflicts(&ops);
-                if conflicts.is_empty() {
+                if model.requires_root(&ops, &root) {
+                    prop_assert_eq!(response.status, StatusCode::UNPROCESSABLE_ENTITY);
+                    prop_assert_eq!(response.code(), "manifest_required");
+                    REQUIRED.fetch_add(1, Ordering::Relaxed);
+                } else if conflicts.is_empty() {
                     prop_assert_eq!(response.status, StatusCode::OK, "{}", response.text());
                     model.apply(&ops);
                     APPLIED.fetch_add(1, Ordering::Relaxed);
@@ -322,5 +349,9 @@ fn batches_behave_like_the_model() {
     assert!(
         CONFLICTED.load(Ordering::Relaxed) > 20,
         "stale views must conflict"
+    );
+    assert!(
+        REQUIRED.load(Ordering::Relaxed) > 20,
+        "batches without the root must be refused"
     );
 }

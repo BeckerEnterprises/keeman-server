@@ -605,7 +605,10 @@ async fn feature_disabled_comes_before_everything_else() {
         assert_eq!(response.code(), "feature_disabled");
     }
     let config = t.call(Req::get("/v1/config")).await.json();
-    assert_eq!(config["features"], json!({ "favicon": false }));
+    assert_eq!(
+        config["features"],
+        json!({ "favicon": false, "manifest": true })
+    );
 }
 
 #[tokio::test]
