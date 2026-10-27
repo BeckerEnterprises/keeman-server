@@ -1,12 +1,14 @@
 //! The shared test vectors that apply to the server: strict Base64url, UUID
-//! format, the KDF parameter range, TOTP, the fixed manifest IDs, signatures
-//! and the statements of the roles chain. Clients pass the same vectors.
+//! format, the KDF parameter range, TOTP, the fixed manifest IDs, signatures,
+//! the statements of the roles chain and freshness attestations. Clients
+//! pass the same vectors.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use blake2::digest::consts::U32;
 use blake2::digest::{Digest, Mac};
 use blake2::{Blake2b, Blake2bMac};
 use keeman_server::extract::parse_json;
+use keeman_server::freshness;
 use keeman_server::manifest_ids::{SHARDS, root_id, shard_id};
 use keeman_server::roles;
 use keeman_server::types::{B64, KdfParamsInput, decode_base64url, is_canonical_uuid};
@@ -346,4 +348,100 @@ fn roles_vectors() {
         checked += 1;
     }
     assert_eq!(checked, 28);
+}
+
+/// A freshness statement in the field names of the API.
+fn freshness_of(wire: &Value) -> freshness::Statement {
+    let point = |value: &Value| {
+        value.as_array().map(|items| freshness::Point {
+            n: items[0].as_i64().unwrap(),
+            hash: key32(&items[1]),
+        })
+    };
+    match wire["type"].as_str().unwrap() {
+        "vault_freshness" => freshness::Statement::Vault {
+            vault_id: wire["vault_id"].as_str().unwrap().into(),
+            user_id: wire["user_id"].as_str().unwrap().into(),
+            time: wire["time"].as_str().unwrap().into(),
+            key_version: wire["key_version"].as_i64().unwrap(),
+            manifest: point(&wire["manifest"]),
+            roles: point(&wire["roles"]),
+        },
+        "user_data_freshness" => freshness::Statement::UserData {
+            user_id: wire["user_id"].as_str().unwrap().into(),
+            time: wire["time"].as_str().unwrap().into(),
+            seq: wire["seq"].as_i64().unwrap(),
+        },
+        other => panic!("unknown type {other}"),
+    }
+}
+
+/// What the server makes of an attestation: `None` when it would refuse it.
+fn read_attestation(attestation: &Value, public_key: &[u8]) -> Option<freshness::Statement> {
+    let bytes = decode_base64url(attestation["statement"].as_str()?)?;
+    let signature: [u8; 64] = decode_base64url(attestation["signature"].as_str()?)?
+        .try_into()
+        .ok()?;
+    let key: [u8; 32] = public_key.try_into().ok()?;
+    let statement = freshness::parse(&bytes)?;
+    freshness::verify(&key, &bytes, &signature).then_some(statement)
+}
+
+#[test]
+fn freshness_vectors() {
+    let mut checked = 0;
+    for case in cases("freshness.json") {
+        let id = case["id"].as_str().unwrap();
+        let expected = &case["expected"];
+        match case["kind"].as_str().unwrap() {
+            "statement" => {
+                let statement = freshness_of(&case["statement"]);
+                let bytes = freshness::encode(&statement);
+                assert_eq!(
+                    keeman_server::types::encode_base64url(&bytes),
+                    expected["statement"],
+                    "{id}"
+                );
+                assert_eq!(freshness::parse(&bytes), Some(statement), "{id}");
+                let seed = signing_seed(case["signer_user_key_hex"].as_str().unwrap());
+                let pair = Ed25519KeyPair::from_seed_unchecked(&seed).unwrap();
+                let mut signed = freshness::SIGNATURE_CONTEXT.as_bytes().to_vec();
+                signed.push(0);
+                signed.extend_from_slice(&bytes);
+                assert_eq!(
+                    keeman_server::types::encode_base64url(pair.sign(&signed).as_ref()),
+                    expected["signature"],
+                    "{id}"
+                );
+                let signature: [u8; 64] = decode_base64url(expected["signature"].as_str().unwrap())
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                let key: [u8; 32] = pair.public_key().as_ref().try_into().unwrap();
+                assert!(freshness::verify(&key, &bytes, &signature), "{id}");
+                assert!(!roles::verify(&key, &bytes, &signature), "{id}");
+            }
+            "decode" => {
+                let bytes = decode_base64url(case["statement_b64"].as_str().unwrap()).unwrap();
+                let parsed = freshness::parse(&bytes);
+                match expected.get("statement") {
+                    Some(wire) => assert_eq!(parsed, Some(freshness_of(wire)), "{id}"),
+                    None => assert_eq!(parsed, None, "{id}"),
+                }
+            }
+            "verify" => {
+                let read = read_attestation(
+                    &case["attestation"],
+                    &unhex(case["public_key_hex"].as_str().unwrap()),
+                );
+                match expected.get("statement") {
+                    Some(wire) => assert_eq!(read, Some(freshness_of(wire)), "{id}"),
+                    None => assert_eq!(read, None, "{id}"),
+                }
+            }
+            other => panic!("{id}: unknown kind {other}"),
+        }
+        checked += 1;
+    }
+    assert_eq!(checked, 36);
 }

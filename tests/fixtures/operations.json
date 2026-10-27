@@ -105,6 +105,26 @@
     "access": "reauth"
   },
   {
+    "method": "PUT",
+    "path": "/v1/me/freshness",
+    "access": "token"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/me/pairing",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/pairing",
+    "access": "token"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/pairing",
+    "access": "token"
+  },
+  {
     "method": "POST",
     "path": "/v1/me/totp/setup",
     "access": "reauth"
@@ -222,6 +242,11 @@
   {
     "method": "POST",
     "path": "/v1/vaults/{vault_id}/roles",
+    "access": "token"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/vaults/{vault_id}/freshness",
     "access": "token"
   },
   {

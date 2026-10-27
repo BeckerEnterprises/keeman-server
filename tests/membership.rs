@@ -118,6 +118,16 @@ fn requests(f: &Fixture, caller: &Account, reauth: &str) -> Vec<(&'static str, b
             })),
         ),
         (
+            "PUT /v1/vaults/{vault_id}/freshness",
+            false,
+            Req::put(&format!("/v1/vaults/{v}/freshness")).json(&json!({
+                "freshness": support::freshness::signed(
+                    caller,
+                    &support::freshness::vault(caller, v),
+                ),
+            })),
+        ),
+        (
             "POST /v1/vaults/{vault_id}/rotations",
             true,
             Req::post(&format!("/v1/vaults/{v}/rotations"))
@@ -288,6 +298,7 @@ async fn every_vault_operation_checks_membership_and_role() {
     assert_eq!(download.status, StatusCode::OK);
     assert_eq!(t.count("SELECT COUNT(*) FROM rotations").await, 1);
     assert_eq!(t.count("SELECT COUNT(*) FROM attachments").await, 1);
+    assert_eq!(t.count("SELECT COUNT(*) FROM vault_freshness").await, 0);
 }
 
 /// Large-body operations check membership before reading the body: a

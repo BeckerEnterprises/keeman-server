@@ -42,6 +42,7 @@ async fn create_and_list() {
             "revision": 1,
             "rotation_required": false,
             "roles_version": 1,
+            "freshness": null,
             "member_count": 1,
             "created": "2026-10-23T08:00:00.000Z",
         }] })

@@ -20,7 +20,7 @@ async fn config_reports_public_settings() {
             "api_version": 1,
             "registration": "invite",
             "webauthn": { "rp_id": "app.example.org" },
-            "features": { "favicon": true, "manifest": true, "roles": true },
+            "features": { "favicon": true, "manifest": true, "roles": true, "freshness": true },
             "limits": { "attachment_max_bytes": 52428800, "batch_max_ops": 500 },
         })
     );

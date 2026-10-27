@@ -3,6 +3,7 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 
 pub mod authenticator;
+pub mod freshness;
 pub mod roles;
 
 use std::net::SocketAddr;

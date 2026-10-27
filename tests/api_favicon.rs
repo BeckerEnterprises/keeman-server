@@ -607,7 +607,7 @@ async fn feature_disabled_comes_before_everything_else() {
     let config = t.call(Req::get("/v1/config")).await.json();
     assert_eq!(
         config["features"],
-        json!({ "favicon": false, "manifest": true, "roles": true })
+        json!({ "favicon": false, "manifest": true, "roles": true, "freshness": true })
     );
 }
 
