@@ -1,0 +1,2752 @@
+{
+  "vectors": "manifest",
+  "format_version": 1,
+  "generator": "@keeman/core 0.1.1, libsodium-wrappers-sumo 0.8.4",
+  "cases": [
+    {
+      "id": "bucket-object",
+      "kind": "bucket",
+      "object_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01",
+      "expected": {
+        "bucket": 6
+      }
+    },
+    {
+      "id": "bucket-object2",
+      "kind": "bucket",
+      "object_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c02",
+      "expected": {
+        "bucket": 63
+      }
+    },
+    {
+      "id": "bucket-keepass",
+      "kind": "bucket",
+      "object_id": "6f9619ff-8b86-d011-b42d-00c04fc964ff",
+      "expected": {
+        "bucket": 14
+      }
+    },
+    {
+      "id": "bucket-vault",
+      "kind": "bucket",
+      "object_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "expected": {
+        "bucket": 51
+      }
+    },
+    {
+      "id": "bucket-max",
+      "kind": "bucket",
+      "object_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+      "expected": {
+        "bucket": 0
+      }
+    },
+    {
+      "id": "ids",
+      "kind": "ids",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "expected": {
+        "root": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+        "shards": [
+          "e6356271-b95f-890c-8de3-83bdb374e799",
+          "2946f144-62bd-8d59-b5d8-ffd74a9cf27d",
+          "97fd2abe-1676-8380-be35-06dab9b92f20",
+          "26e3efc8-e702-8e74-970c-6e45a7563059",
+          "69aeaa12-844c-8b16-93d8-a4f394edd58b",
+          "07424be5-6f70-8681-a372-fe6e2e516955",
+          "01f30b4c-2969-812a-a9f2-33aaefadd51a",
+          "e77fccb2-31ef-8b22-9ebb-954048f0470d",
+          "db0c8cf9-bf26-8613-ab9c-f6f445848bf4",
+          "2bee74b5-2b71-8f3f-bd09-2ec358f7f096",
+          "54c1db03-f8af-82b4-8628-a85d544b2fd7",
+          "5f6ea28e-49d1-8f4c-a1c6-9653be96ce62",
+          "5b3ab204-0a33-8bfa-83e8-c9f60653f9ac",
+          "23ce788d-abf1-8cfe-8741-68b742f20942",
+          "d1f779f4-a026-8e23-af63-72e1274ae617",
+          "0e5908ee-3539-8c6e-bbf2-facae7699a5f",
+          "b0c1930b-0175-8a51-ae10-d3eb17596111",
+          "3ac8bc63-792c-8d61-bedc-6005324d0feb",
+          "445ecaa1-7deb-8285-846d-b269ae227aeb",
+          "10e66f67-f81d-8a66-9528-00688e4d869e",
+          "6939d299-4107-8c0d-8882-43229b78d256",
+          "ed7fb4f7-5300-85fa-94e0-73826af380ac",
+          "575a74a6-67ce-8918-b3a4-aa0aecdee5b6",
+          "0788bb17-29da-8eaf-8d99-85f4c997ad73",
+          "c4061391-ac98-8cb6-a877-51d1817d9968",
+          "e84dc0f1-e09a-8058-9c34-ca1b804ae248",
+          "e3301ca3-1bd1-8f0c-b5b2-e6367daac726",
+          "ad4348c8-c679-85ea-9e93-93e97ac896c5",
+          "c60d524a-6498-85a6-bded-419cfdbe8ac7",
+          "155cee76-9200-88e5-8a6d-38e6ef923a8f",
+          "0c265229-7563-8326-97fc-7ff616298a89",
+          "3b172c36-6ced-89f4-b9db-f76a5616aeab",
+          "b68931ba-4ddf-8ced-b166-b70802f0152b",
+          "e2826ace-4d1d-8f9d-9d48-f6e9a4fed9ec",
+          "fe7b9e85-11ec-8374-adb0-5c1efc1dbe10",
+          "5da30260-b4a5-84fd-84ed-0e7e9f0d1cab",
+          "222225ed-de80-874f-967b-45e875588c87",
+          "5f63a66a-f882-882e-bfae-e2b401468e27",
+          "87c0d71b-a78c-804a-90c2-77e61c1861cd",
+          "52ba8290-c2f2-8ff2-816c-385712f5be7a",
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+          "d7b64ff6-af6d-8871-8f14-7831239b4cf0",
+          "e97b432b-89d3-8504-9684-e320a1ff5cac",
+          "d08dc342-ff08-8a88-8a43-83787b16c219",
+          "7916dd95-154c-8d49-b934-2637badb7d56",
+          "eab4bcf0-70ac-8907-991a-5064f7bbc55e",
+          "414efbb2-22cf-835a-8fd3-724197c1ee3e",
+          "8ad38c2f-bced-826f-81eb-0eede49f6aee",
+          "0d31e9b5-2dba-8a77-9b1f-127b9738f9a4",
+          "b67767f3-9692-817c-a432-5e679288a6cf",
+          "2e63f145-b110-875d-8942-15d7dbc1a457",
+          "b51288fd-423e-8ed0-8351-c2781846ddfb",
+          "caf0d40b-8665-8ff5-9f16-00736b8c8ea7",
+          "c9d74928-0375-8527-a34e-a8ae9a48c599",
+          "97c7078b-0e61-802d-a30b-330630959998",
+          "0639e5a5-3c7a-8037-a698-268ef3d95cbf",
+          "4f8b1a65-3cee-8d97-8496-fb3cc14cd8c6",
+          "9cc02e8a-535d-8466-8a3a-fcd986140c82",
+          "9ee434f9-9b2f-83bd-8d91-36ca225425d5",
+          "aeffc930-dd54-86c7-9c76-8822737707d7",
+          "88ca0867-ce42-8887-a5c6-172682088ae7",
+          "01501184-158c-89c7-ab1f-bd3109afab56",
+          "afa9fc14-d0df-8483-a26d-b50c9ee76c1b",
+          "6f6db15f-3951-8e9b-bc12-032b4123aa98"
+        ]
+      }
+    },
+    {
+      "id": "hash-entry",
+      "kind": "object_hash",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01",
+      "type": "entry",
+      "key_version": 1,
+      "data": "AX4OagBz9mqjAXsVZdgMCrv0ZSUs6nfSp9syINxjIBaih9e1S2857iw1xQOY_RCai4Dl7xrzIjet",
+      "expected": {
+        "hash": "l_hylgBYIjdtSioCZVHaRg9T0caMfrKyu3HdJ0E_pgM"
+      }
+    },
+    {
+      "id": "hash-other-type",
+      "kind": "object_hash",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01",
+      "type": "group",
+      "key_version": 1,
+      "data": "AX4OagBz9mqjAXsVZdgMCrv0ZSUs6nfSp9syINxjIBaih9e1S2857iw1xQOY_RCai4Dl7xrzIjet",
+      "expected": {
+        "hash": "Kfr82CXdw2i0v11efiIc328gdDrIfyvqsQaXQbwa2b4"
+      }
+    },
+    {
+      "id": "hash-other-key-version",
+      "kind": "object_hash",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01",
+      "type": "entry",
+      "key_version": 2,
+      "data": "AX4OagBz9mqjAXsVZdgMCrv0ZSUs6nfSp9syINxjIBaih9e1S2857iw1xQOY_RCai4Dl7xrzIjet",
+      "expected": {
+        "hash": "RnP70mLyTIo94wpV523t014aqUdANWL16nrtw_lgnAk"
+      }
+    },
+    {
+      "id": "hash-no-data",
+      "kind": "object_hash",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01",
+      "type": "entry",
+      "key_version": 1,
+      "data": null,
+      "expected": {
+        "hash": "l3Q1-w2nlPXnaoS_ygtjkSOtZGGam0gEqM9FlPS4UB4"
+      }
+    },
+    {
+      "id": "envelope-root",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "3477ce5345f45022689d5a26082b0558526686cfb787c1ed",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 7,
+        "shards": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          [
+            3,
+            "BiprjGFEOEyIpoTuvvSbdVZkpCzX7fXrPpGzGNy5EEY"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "expected": {
+        "data": "ATR3zlNF9FAiaJ1aJggrBVhSZobPt4fB7RdNFiE_qFHdQ0KK7QLg8ogrwMCV-WWtXi3roPUVfPtgcaiS1LWpDByh4aB7TtYq3gLdxPfBaQ3kl6dMWp2-PIbMSyi25LMUzr-RITzrRldVUBc0xSdvTl2SnnlqnTObQ6Vv8_dASXsV2SwHkZPfOv950iB_UlQwqLYKqLpoeqqCQ4qLbsfNq1YevoX9_RCyu5GaUQNJ5SgV6M90bWa5PjCy3oSOYtOzoON5uoYVeidsrKY5siM-ESwEnB4UzhZ8NafuWorWZHBUqC-u6kBSy6A4IPbxuFUF2y9XtmKhlAQocVARwjBJnoBlHS3CRrjb_HhKpHDTCEAgSSkl-xTgS4E8T9BN5UHkA_54sShBmP_vTpYFSiPTLHdUrau8qTzET0Q5BsfcNDRgVrHAn5RbWL0QLzKj4fZ432_n0xw1ErCQBLvyHsCNEQnQCKihwyP7FT98pSz7WEGKGmmQspHo4W2dhB2U5foaYDZ7wBpYMDbmume3wdGPG1lAq4JKbc2LvVf_FEUQuh3KfZhURavfy1fduMep0OhUXulItEPWBqrIhU0gBMVK10ectHojqCGin7pH8ekX1_BN947-5XSG_v5d3vFNjN9060-7fgxgkuQd18VEkV-owtLSLFxrMYHlFpkvnTJO2yhYH1NALO3UYpI1rVrcO7Is5kISoD5PLe9jPvxOdsXzaCfKVXZLku19qg",
+        "read": {
+          "kind": "root",
+          "seq": 7,
+          "shards": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            [
+              3,
+              "BiprjGFEOEyIpoTuvvSbdVZkpCzX7fXrPpGzGNy5EEY"
+            ],
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "envelope-shard",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "7b1567b9362d0b02dfc816023042fed4e4846830b5607371",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "01f30b4c-2969-812a-a9f2-33aaefadd51a",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 3,
+        "objects": {
+          "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01": [
+            "entry",
+            "KKJuM6J95oVCibscRNHCBlvZ1TbWSjTHZGNk6JBGNls"
+          ]
+        }
+      },
+      "expected": {
+        "data": "AXsVZ7k2LQsC38gWAjBC_tTkhGgwtWBzcTgPM48NyiFXhpeMZKyuBFidOF63bDQwjrxNcF4bg4SoBos4OjNe_J8cEGUL3Yedt_FjjdvNNTQbU2TjDdgDNaW7o_v6KRDv61mBn_n98zpnEXMdL3wnhrCnWSqwI7t8yELqvM9ZvwiuH_-QB5UcCMghh2IzIsJKv4uK4eqAGYGidGm9YwtTJzo7woj-YKNpU44rbOXKlTC7lYCtCk3e3oy_vQglMLn6ujGKwxFGdnGfkcaGFmeHywDjZIq7nu14B071ZQfF5LeTArm9FPdOZTY8vefNh23U4a9rX8XxYmtHlOgF-hDJbYAQ-Y9ysLNuELUM1AqPEIl66y3usXMgU0zeUL4vQSVe9ggl9N5VDQ8_",
+        "read": {
+          "kind": "shard",
+          "seq": 3,
+          "index": 6,
+          "objects": {
+            "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01": [
+              "entry",
+              "KKJuM6J95oVCibscRNHCBlvZ1TbWSjTHZGNk6JBGNls"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "envelope-shard-later-type",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "b88caae6c76934e0ba930528221b5614e1cb6a15a00ebe5e",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "01f30b4c-2969-812a-a9f2-33aaefadd51a",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 3,
+        "objects": {
+          "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01": [
+            "note_v2",
+            "KKJuM6J95oVCibscRNHCBlvZ1TbWSjTHZGNk6JBGNls"
+          ]
+        }
+      },
+      "expected": {
+        "data": "AbiMqubHaTTgupMFKCIbVhThy2oVoA6-Xlx0lf0jNwrzcVLdl9D_Mz7L9nRcUCviL7agmJSKLvl7ulaUbKLiuQT4EeaHeGql_c6Nw7f_RlwEZC2M3xoXAVdgNyLlLjpWyZSlg55ZtsoBd8gwJkEygKCRuOyAUoo0-NPDE_gRzHykI3mLYcA5lL_7_jIqYow6PU0n76nwRbHDQe-ioMeQqoZOoJOeiZUhiZhAuNXiaQHJ9W_9au90gVSFngqmGiGhwT3q_e2JNITJzMOfcUgvPFEnUlHFyYerwyZqY5WNkYlO9ln6JzvS8T2kuGfMntZna4iRQJOLXF_ev4PB0xR_t3cc3DDaf87-ptrz3x_rFy4L04T3sOfCbRM6l_BcTwv0UEZHvf0ex445",
+        "read": {
+          "kind": "shard",
+          "seq": 3,
+          "index": 6,
+          "objects": {
+            "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01": [
+              "note_v2",
+              "KKJuM6J95oVCibscRNHCBlvZ1TbWSjTHZGNk6JBGNls"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "envelope-root-newer-schema",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "25a8e9953e4f8250365276b6a0ba735ff212db163a86652d",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+      "key_version": 1,
+      "content": {
+        "schema": 2,
+        "seq": 1,
+        "shards": "later"
+      },
+      "expected": {
+        "data": "ASWo6ZU-T4JQNlJ2tqC6c1_yEtsWOoZlLYc7HyOJJ26nV__v3nz4nHLtLpaZPOWTa9WnHni81SrM7ANLVIZa6ZiBue1cwjZadQO-3ycsq40N4RFcfUjhBaco8gZBa0snCxIJTbe3A1R6sS-yFsyA3FoymtJWsXI0_DzUwEBIb3yxU0ZVXMgs0fCVupEdETtw93mQwrLVylpDUZuPI4bFnQWWqB9ed0FRVcMjVxK_hr8vxRzUSpknhn_IEjPPFgOeoQKamh5nDqq_r7RzQl6j4b-qacnxuJs0zFmi5_-rrJlYLA58sHiodgxlfCv0iZTPrDYDcTIOioFirF-lG1qvpxZjRz7iutU77-BQ3eRY3tMI1kK1m-cmSPXoXNLQmgq_NN4zG5CY84aJ",
+        "read": {
+          "kind": "newer"
+        }
+      }
+    },
+    {
+      "id": "envelope-root-63-shards",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "0fb821304687c98f0a0285b0bb9177342f3a9a0c9e6ef4a1",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 7,
+        "shards": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          [
+            3,
+            "BiprjGFEOEyIpoTuvvSbdVZkpCzX7fXrPpGzGNy5EEY"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "expected": {
+        "data": "AQ-4ITBGh8mPCgKFsLuRdzQvOpoMnm70oeNbAfVxjwyxTq1tPh2n-1tq6RIaqMTKzune51h-M9c61sUdJ_EsOm5muP2TzAFveaph5ZszTAro2b4SwAq6jq0JH4Sbc1KlO2Jddmw7EziaFbk7ubd40uRPihnAHGIuOp7EqmMUH8FW13k82_AcpkXxNf1c0yHFDIJ7nL9sAhbbotYNcgKjtcdy_eCGcsLMEtjY8viVAXUGFX5JSBdHl4yisMnCSsch-aWehctJSqghOM56o5rofOr7F6tKgkwh4ZNLbi7a8jU-cO7XFJjGeuuNJquTy-UC4gPJ3HJtznj3pNwEgCnaLr_bPZ2Lqj4u82uO3x5bNYgMKA7OZnpgFACkSIpgLhouymdeoUehpTixekPu0KR-peqRRD-wsukobPjWZKIzn4cMx979lhib9cqYYtKB7ktLR6mBaj6yPJ6xgOcFiy_W_aSnBtXB_HLJPCXfeF2vJ8lkUe0cqGzZ9A38AWXqoG8OeKpJjv_aZ3o3jUQsOOJtw4pacdpAYp2aY9zoR-ceeS5rpMJXonPwnS2qqyNWevdtEYKnCxVsOUYnsfxsr3IleWzhlRCq1_in9XgAxqfCwlKtTmeZ_-AC-ifAQO3twYWBCyUS5l0vgOggfiIyYIzwfLB4lrpTYNY5u0-j22NKC72gPNOaBZT-PiZ-cJx_70mlUWCnyN_iXRHZofUcDKQdhm12j0_1bIr69Q",
+        "read": {
+          "error": "validation"
+        }
+      }
+    },
+    {
+      "id": "envelope-root-under-shard-id",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "a322b2c63447a0ec00578c82891d1d5858d5ba2489b9b632",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "01f30b4c-2969-812a-a9f2-33aaefadd51a",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 7,
+        "shards": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          [
+            3,
+            "BiprjGFEOEyIpoTuvvSbdVZkpCzX7fXrPpGzGNy5EEY"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "expected": {
+        "data": "AaMissY0R6DsAFeMgokdHVhY1bokibm2MhyOYgg5S04MEQThq3z4GbBipD0SldxRi5u5ps8NOuPKv9WBQs-FCNfPBk6UmoITtZ7DCLOVVHPHJSNY5eG7myo6P40KfltW5Lq5Ytq1vdRLlITwR_P1j86X5O-xBs0wTJ8nL6GGXmvhs5kSbA71TgSJXXSkD4P3qpMzZ2tWmedR6FBhT2gbjiEW0kjAzE6jv9MdHG2f2SLb8_S1mqCAZrffYlghycNgy7n1HnFBxkQmPtkFHNb8e4_Zh62Cl5Eoov1J_Q_kyGrmQka2A1OK5H2gWxzCLvWEeHcC7ed28x7zdrAdKE8Lufzj7I-qEomS--So7z0cFeARRL-Fz9KEH-_XluytDPdZt0QMI0CbIFSeHG3SmybAydk7duqaR3j8BGGMSXA5luNLe2H8Yu9ShYBZmJXV31ZeuitCriZz_fLOzbgxHszWLL53xaTeKeGArMswC1KkNPvZbYiDJNAT8L2etPPXe4Q0ron9pzUXMn9XJ9FpLeXQIV8U7TEBOHQFIOCampQqoDkb2Blu6nqRtaghsktljcwkmHKPPIA6CrBL4Wkh2LClyFSHjDcwjzJvUgvO0AT0PAR62EGeW8DrZT4saZjAAy_wfUUMKA6Mg_BwxFw36_I5NDt4CXoc0GodXDFWMHimbmy-1H0CQqFGlY1ij6tndJrQ6Hwnv7ipWltFPI52uWlzfCKGXRyxkFVWYQ",
+        "read": {
+          "error": "validation"
+        }
+      }
+    },
+    {
+      "id": "envelope-shard-wrong-bucket",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "1b50d5d7f469f5302929dd47158e8b40be3c49172cfbecae",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "e77fccb2-31ef-8b22-9ebb-954048f0470d",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 3,
+        "objects": {
+          "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01": [
+            "entry",
+            "KKJuM6J95oVCibscRNHCBlvZ1TbWSjTHZGNk6JBGNls"
+          ]
+        }
+      },
+      "expected": {
+        "data": "ARtQ1df0afUwKSndRxWOi0C-PEkXLPvsrkAvr9WLglQorqaIpAwku0lpQo3WPn5a3PttrhQ07wuYMxrYQdskkAuzVj3xbTd7NTVU-_oJQ_JHwUl1LZyg7ymK_XrW1oqjKLLuRAJG1aDxRn2pXVN03Ha1ebOuJZeroS_fZk7VNzbZIj8MPLfTNyWmqv4r5VXL8RVFzbX9IeDjkF88TFE0Z4TVd7ZgpMxdpN3n_3X_tYb5EzSslE6A_8270t6VmHCatzCHX6aLPICpuim67q1aHw1VakTVS_OPeRsvWbWWCYi9Jf7R_t1iHy8ohUBnln3PGZVBGRL0mguTC6IeoI_FetdbqthWQoio90U9_VIb3lZYapzRehdqRofGcWu5n6IT819eOdVKu4wK",
+        "read": {
+          "error": "validation"
+        }
+      }
+    },
+    {
+      "id": "envelope-shard-short-hash",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "f6f45ba9d0336db8cee13672166ac25f5126c34d680549a2",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "01f30b4c-2969-812a-a9f2-33aaefadd51a",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 3,
+        "objects": {
+          "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01": [
+            "entry",
+            "mFRrH6kzP109yPVSaNai-rGOyhOka3RXNkCHZjXirw"
+          ]
+        }
+      },
+      "expected": {
+        "data": "Afb0W6nQM224zuE2chZqwl9RJsNNaAVJojTMTqjU8nAixrgeNeTj6jI7gFDGxiplPPqk859knYXko97V1chhJWxg-SY09K7CRxuFJREuQMPvv5_HvQGXUyX9x-mCjFwKPxfxH_9e-AQa7RwHkjSj_jotGKQcofh5xeuiYuRBG6YT77452I0bG7yc-cgKR1vATDcxyFRXJTIWcAE0V6J2Q654eD8yteuamTsmad9eCDNDww5hiIUDxuap1p473ps3pQZOlmm2x6cMQMJH_Srx6mlA4c1HJN1q_vnwHizndifRnVCXcSXmqCT6thuV8ZH4EUWd48D6KWsae7CvgZsM3hD4WCQYiJuvRZm-onIX20dHMRf5TdHtpr0n7F6iF8WRRMd19BW-q8RH",
+        "read": {
+          "error": "validation"
+        }
+      }
+    },
+    {
+      "id": "envelope-shard-lists-manifest",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "d03def84cac5f6467b03e2f4ad43c9e55b7b65dda970e44e",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "01f30b4c-2969-812a-a9f2-33aaefadd51a",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 3,
+        "objects": {
+          "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01": [
+            "manifest",
+            "KKJuM6J95oVCibscRNHCBlvZ1TbWSjTHZGNk6JBGNls"
+          ]
+        }
+      },
+      "expected": {
+        "data": "AdA974TKxfZGewPi9K1DyeVbe2XdqXDkTpwLYxj2D1_x23jWZ24mGVJd8PdE2hRxNDgChmT0GzNi5w5w0BHSMjbFyZX814kUpFPjnSfElnf0NJAi0VXQZgOTgbi-HGXX0JuCFV8kPUWTW4gEvow2gqSUYoE5Hg6Xh9au95IKxwDQgSNi4OU6whoaL_c3y6wIGvnYIkQPD3bvjEHZY9-QvYCBF8rbroYMypou4kQJyQwDKS1oORrfJ6TN4mCSyE-ICncQzgZ-SM0YtzVUkaarAqxcXvcBRM9k0qVaI7hjguTFI74nMw5D0jm9z6yL-nqlUnUvaEU8tT2cKlHcvmLPZPxL_7zFoCD335CT0hlWIqmnSx7u0eidU91r4tcXXTKm_WCpGN5dE7Pb",
+        "read": {
+          "error": "validation"
+        }
+      }
+    },
+    {
+      "id": "envelope-shard-upper-case-type",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "272584fde18ea72887fbd87ee9c5d1aff714bb8b0add0ffc",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "01f30b4c-2969-812a-a9f2-33aaefadd51a",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 3,
+        "objects": {
+          "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01": [
+            "Entry",
+            "KKJuM6J95oVCibscRNHCBlvZ1TbWSjTHZGNk6JBGNls"
+          ]
+        }
+      },
+      "expected": {
+        "data": "ASclhP3hjqcoh_vYfunF0a_3FLuLCt0P_FKldiuIbx0PzRA17BIQtfpyKgm3a_f3EPQfTNitfzXBAxYe6Z_En8NyCykRIZ2jHzjWCiR87N6Hjl8rhO_EsHc64MYJd33PyUMUz_XfObD-BzcvDmEHahU6rR-gBXoLK4esL-7TyYhzE4hP-tpe7-NYQ3bFpMNceVK_5yeTxM_aAOSxFADcXanfklxfaFpCXp3g3nYBBgZ7ogJ6SkKSxUjy9qdf0EhDbefBxoUR_oZootAYczpWfqxD78gW1vynz5hS9zBnD4SMy86QMSJMOEbdzN9sDKHlGnYlqkJPzJmiKwtiqLpOkwMtleVyNnn3xM_-DY527ijxHM6GwMYnabD_7mN_EEdkIs0smOncV8o5",
+        "read": {
+          "error": "validation"
+        }
+      }
+    },
+    {
+      "id": "envelope-shard-lists-root",
+      "kind": "envelope",
+      "key_hex": "bdf70b6d01564064785bcbe4ff2c85eba2ca8f6dcce184ab3c9a17fa25aae915",
+      "nonce_hex": "97fea7480931b2db625e5488a8c209c15c6eda800d15236f",
+      "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+      "object_id": "01f30b4c-2969-812a-a9f2-33aaefadd51a",
+      "key_version": 1,
+      "content": {
+        "schema": 1,
+        "seq": 3,
+        "objects": {
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": [
+            "entry",
+            "KKJuM6J95oVCibscRNHCBlvZ1TbWSjTHZGNk6JBGNls"
+          ]
+        }
+      },
+      "expected": {
+        "data": "AZf-p0gJMbLbYl5UiKjCCcFcbtqADRUjb-Un3Qk121BWHiz61I0P68h4p7pRvuhLHNN_94q8vthGtkUAayKrxqkNRRBLfJN6Mn2PFyMoJWhhXETNkt6ri5KY96VgUCUP-AYwYzhLPNpTH80u9_Ywq6GGOR4Aln6kTaEGT7OLdY5zRy_1AXFanAB5FvM3neb0waN2SG5NGXTlg3PVjLGnfgsA_HQ7aHDuozvhNOYI3d3qaiS1BD3TvhL322wc6I95-ypqj9y4lU5Nh9o2ofsfHh5Ovrqyq34mg2PR37zwxtQgrjs_UjPYIQQ_3rAXXOSm_M-jAcI5b9tqjrai4PuftVyIQGA9PizGrfBlC020LoqHNlgViWM8vMFai5KnWPSD9w0VyzauBp3-",
+        "read": {
+          "error": "validation"
+        }
+      }
+    },
+    {
+      "id": "check-verified",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "verified",
+        "issues": [],
+        "root_hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+      }
+    },
+    {
+      "id": "check-unverified",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": false,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          }
+        ],
+        "reads": {}
+      },
+      "expected": {
+        "status": "unverified",
+        "issues": []
+      }
+    },
+    {
+      "id": "check-root-missing-flagged",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          }
+        ],
+        "reads": {}
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "reason": "missing"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-root-missing-floor",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": false,
+        "floor": 3,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          }
+        ],
+        "reads": {}
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "reason": "missing"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-root-no-key",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "corrupt",
+            "reason": "no_key"
+          }
+        }
+      },
+      "expected": {
+        "status": "unknown",
+        "issues": []
+      }
+    },
+    {
+      "id": "check-root-corrupt",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "corrupt",
+            "reason": "auth"
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "reason": "corrupt"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-shard-newer",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "newer"
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "unknown",
+        "issues": []
+      }
+    },
+    {
+      "id": "check-object-missing",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "reason": "missing"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-object-other-key-version",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "1YcsZuGt3XB7d40uQaBt3SU3wd_E--1rJeoAzhOB0rg"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "reason": "differs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-object-unlisted",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000206",
+            "type": "entry",
+            "hash": "eu1r9zygiz18Ub-wO5QoXZepR1zp4IVQtfHGsxdN_bQ"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000021",
+            "type": "entry",
+            "hash": "A4-gZqgK_gQtco90tHLd9QHn1RjditvT3ZSPl8UgXzg"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000206",
+            "type": "entry",
+            "reason": "unlisted"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000021",
+            "type": "entry",
+            "reason": "unlisted"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-shard-missing",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "reason": "missing"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-shard-corrupt",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "corrupt",
+            "reason": "auth"
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "reason": "corrupt"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-shard-invalid-content",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": []
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "reason": "corrupt"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-shard-other-hash",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "-VNd14DTY6YArE5KaqnbGfD20uYUhc-PYJw7U1W7A_0"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "reason": "differs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-shard-not-in-root",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          },
+          {
+            "id": "2bee74b5-2b71-8f3f-bd09-2ec358f7f096",
+            "type": "manifest",
+            "hash": "zSpP_W-otDPqEkcB8_6AzkKyjNYVV3b0wA7_bpLAbjQ"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "mismatch",
+        "issues": [
+          {
+            "id": "2bee74b5-2b71-8f3f-bd09-2ec358f7f096",
+            "type": "manifest",
+            "reason": "unlisted"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-manifest-type-elsewhere",
+      "kind": "check",
+      "input": {
+        "vault_id": "0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5b01",
+        "flagged": true,
+        "floor": 0,
+        "served": [
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000017",
+            "type": "entry",
+            "hash": "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000186",
+            "type": "group",
+            "hash": "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-00000000000d",
+            "type": "icon",
+            "hash": "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+          },
+          {
+            "id": "07424be5-6f70-8681-a372-fe6e2e516955",
+            "type": "manifest",
+            "hash": "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+          },
+          {
+            "id": "bfe87eb0-2d9d-8e56-a448-d883dc924eb1",
+            "type": "manifest",
+            "hash": "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+          },
+          {
+            "id": "d8f744c3-15b8-8183-bd5f-9facb591834b",
+            "type": "manifest",
+            "hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+          },
+          {
+            "id": "0192b3a4-5c6d-7e8f-9a0b-000000000014",
+            "type": "manifest",
+            "hash": "Ct9VXeFCHBfBtcSJBMuTmcU2-FICPAH9PKDa0tM-bV0"
+          }
+        ],
+        "reads": {
+          "07424be5-6f70-8681-a372-fe6e2e516955": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-000000000017": [
+                  "entry",
+                  "k16T8pxFcl-ODrhFfrX8AImgOWG09k7IpoHf0unGZ88"
+                ],
+                "0192b3a4-5c6d-7e8f-9a0b-000000000186": [
+                  "group",
+                  "2tGhGCj4vh5k6Z0rfAhfELH-E255MjKirg_LeuLzKe0"
+                ]
+              }
+            }
+          },
+          "bfe87eb0-2d9d-8e56-a448-d883dc924eb1": {
+            "kind": "ok",
+            "seq": 4,
+            "content": {
+              "schema": 1,
+              "seq": 4,
+              "objects": {
+                "0192b3a4-5c6d-7e8f-9a0b-00000000000d": [
+                  "icon",
+                  "IKJQuJosgzag-ny-zsVD0HwmvjtvtysCepb4WFpj0fg"
+                ]
+              }
+            }
+          },
+          "d8f744c3-15b8-8183-bd5f-9facb591834b": {
+            "kind": "ok",
+            "seq": 9,
+            "content": {
+              "schema": 1,
+              "seq": 9,
+              "shards": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "fFpAvUiHe4_wj0GWSh1-jPp8Zv2hX0bzn8x7tlCK35E"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                [
+                  4,
+                  "w2YyyNKJbO-7eQ17UalyI5EUJm1SpDXT7erf2E-_KWw"
+                ],
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "verified",
+        "issues": [],
+        "root_hash": "slNs1PVCWmK3PtCJijbhTF-ZAgAu3AVFnRBA-o5Wp70"
+      }
+    }
+  ]
+}

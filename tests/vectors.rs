@@ -1,8 +1,10 @@
 //! The shared test vectors that apply to the server: strict Base64url, UUID
-//! format, the KDF parameter range and TOTP. Clients pass the same vectors.
+//! format, the KDF parameter range, TOTP and the fixed manifest IDs. Clients
+//! pass the same vectors.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use keeman_server::extract::parse_json;
+use keeman_server::manifest_ids::{SHARDS, root_id, shard_id};
 use keeman_server::types::{B64, KdfParamsInput, decode_base64url, is_canonical_uuid};
 use serde_json::Value;
 
@@ -114,4 +116,17 @@ fn totp_vectors() {
         checked += 1;
     }
     assert_eq!(checked, 25);
+}
+
+#[test]
+fn manifest_id_vectors() {
+    let cases = cases("manifest.json");
+    let case = cases.iter().find(|c| c["kind"] == "ids").unwrap();
+    let vault = case["vault_id"].as_str().unwrap();
+    assert_eq!(case["expected"]["root"], root_id(vault));
+    let shards = case["expected"]["shards"].as_array().unwrap();
+    assert_eq!(shards.len(), SHARDS);
+    for (k, expected) in shards.iter().enumerate() {
+        assert_eq!(expected, &shard_id(vault, k), "shard {k}");
+    }
 }

@@ -1,7 +1,7 @@
 {
   "vectors": "totp",
   "format_version": 1,
-  "generator": "@keeman/core 0.1.0, libsodium-wrappers-sumo 0.8.4",
+  "generator": "@keeman/core 0.1.1, libsodium-wrappers-sumo 0.8.4",
   "cases": [
     {
       "id": "rfc6238-sha1-59",
