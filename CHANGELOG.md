@@ -16,7 +16,6 @@ The migration `0006_roles.sql` adds the column `users.signing_public_key` and th
 - An owner of a vault with a roles chain demotes itself before leaving it or deleting the account, otherwise `409 owner_must_demote`.
 - `check` reports roles chains with gaps in their versions or statements that do not link to their predecessor.
 - `GET /v1/config` reports `features.roles`.
-
 - Object type `manifest` for the authenticated vault manifest that clients keep in every vault: an encrypted list of all live objects, so a server can no longer withhold or replay objects unnoticed. The server stores it like any other object and never reads it.
 - Manifest objects are allowed only under 65 IDs derived from the vault ID (BLAKE2b, crate `blake2`), and no other type may use these IDs; they can be neither deleted nor dropped in a key rotation (`400`).
 - Once a vault has a manifest root, every batch must write it, otherwise `422 manifest_required` (stored for the idempotency key). An outdated client can then no longer change objects behind the manifest.
