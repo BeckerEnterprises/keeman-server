@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT signing_public_key FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "signing_public_key",
+        "ordinal": 0,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "signing_public_key"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "1042babdacfc2807564758486f2b933a244adf5c10b591a647d9f01bdada0667"
+}

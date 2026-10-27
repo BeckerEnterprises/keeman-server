@@ -426,6 +426,10 @@ async fn sharing_notifies_the_affected_accounts() {
         .json();
     let rotation_id = opened["rotation_id"].as_str().unwrap();
     let base = format!("/v1/vaults/{vault_id}/rotations/{rotation_id}");
+    let roles = t
+        .rotation_roles(&alice, &vault_id, &[&bob.user_id])
+        .await
+        .unwrap();
     t.call(
         Req::put(&format!("{base}/objects"))
             .token(&alice.access_token)
@@ -444,6 +448,7 @@ async fn sharing_notifies_the_affected_accounts() {
                     "invite_keys": [],
                     "remove_user_ids": [bob.user_id],
                     "drop_objects": [],
+                    "roles": roles,
                 })),
         )
         .await;

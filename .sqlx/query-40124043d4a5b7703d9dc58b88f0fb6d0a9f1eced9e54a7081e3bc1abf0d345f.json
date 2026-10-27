@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT m.user_id AS \"user_id!\", u.email, m.role, m.state, u.public_key,\n             m.sender_id AS invited_by, m.created_at\n           FROM memberships m JOIN users u ON u.id = m.user_id\n           WHERE m.vault_id = ?\n           ORDER BY m.created_at, m.user_id",
+  "query": "SELECT m.user_id AS \"user_id!\", u.email, m.role, m.state, u.public_key,\n             u.signing_public_key, m.sender_id AS invited_by, m.created_at\n           FROM memberships m JOIN users u ON u.id = m.user_id\n           WHERE m.vault_id = ?\n           ORDER BY m.created_at, m.user_id",
   "describe": {
     "columns": [
       {
@@ -59,8 +59,19 @@
         }
       },
       {
-        "name": "invited_by",
+        "name": "signing_public_key",
         "ordinal": 5,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "signing_public_key"
+          }
+        }
+      },
+      {
+        "name": "invited_by",
+        "ordinal": 6,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -71,7 +82,7 @@
       },
       {
         "name": "created_at",
-        "ordinal": 6,
+        "ordinal": 7,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -91,8 +102,9 @@
       false,
       false,
       true,
+      true,
       false
     ]
   },
-  "hash": "411bc2a3cfe1d95956b33f31572d7c0ec5dfde2a72043b47114daac6877c0343"
+  "hash": "40124043d4a5b7703d9dc58b88f0fb6d0a9f1eced9e54a7081e3bc1abf0d345f"
 }

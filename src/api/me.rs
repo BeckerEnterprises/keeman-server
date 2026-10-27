@@ -44,6 +44,7 @@ pub async fn get(
         "user_key_wrapped": encode_base64url(&me.user_key_wrapped),
         "public_key": encode_base64url(&me.public_key),
         "private_key_wrapped": encode_base64url(&me.private_key_wrapped),
+        "signing_public_key": me.signing_public_key.as_deref().map(encode_base64url),
         "user_data": { "revision": me.user_data_revision, "data": encode_base64url(&me.user_data) },
         "two_factor": {
             "totp": me.totp_enabled,
@@ -276,6 +277,49 @@ pub async fn put_recovery(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SigningKeyBody {
+    signing_public_key: Key32,
+}
+
+/// Sets the public signing key once: the same value again is `204`, another
+/// one `409 conflict`.
+pub async fn put_signing_key(
+    State(app): State<Arc<App>>,
+    session: AuthSession,
+    ip: ClientIp,
+    reauthed: Reauthed,
+    _: NoQuery,
+    StrictJson(body): StrictJson<SigningKeyBody>,
+) -> ApiResult<StatusCode> {
+    let user_id = session.user_id.as_str();
+    let key = &body.signing_public_key.0;
+    let now_text = format_timestamp(app.now());
+    let mut tx = reauthed.begin(&app).await?;
+    match db::users::signing_key(&mut *tx, user_id).await? {
+        Some(Some(current)) if current == key => return Ok(StatusCode::NO_CONTENT),
+        Some(Some(_)) => return Err(ApiError::new(ErrorCode::Conflict)),
+        Some(None) => {}
+        None => return Err(ApiError::new(ErrorCode::SessionInvalid)),
+    }
+    if db::users::set_signing_key(&mut *tx, user_id, key, &now_text).await? == 0 {
+        return Err(ApiError::new(ErrorCode::Conflict));
+    }
+    app.audit
+        .log(
+            &mut tx,
+            &now_text,
+            "signing_key_set",
+            Some(user_id),
+            Some(&ip.hint()),
+            json!({}),
+        )
+        .await?;
+    tx.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// Deletes the account: solo vaults go, shared ones are left and
 /// flagged for rotation; one transaction, then events and the cookie.
 pub async fn delete(
@@ -290,6 +334,10 @@ pub async fn delete(
     let mut tx = reauthed.begin(&app).await?;
     if db::vaults::sole_owner_of_shared(&mut tx, user_id).await? {
         return Err(ApiError::new(ErrorCode::SoleOwnerOfSharedVault));
+    }
+    // A signed owner list must not keep naming an account that is gone.
+    if db::roles::owner_in_chain_with_others(&mut tx, user_id).await? {
+        return Err(ApiError::new(ErrorCode::OwnerMustDemote));
     }
     let mut notify = BTreeSet::new();
     let mut attachments = Vec::new();

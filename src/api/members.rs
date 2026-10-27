@@ -10,6 +10,7 @@ use axum::http::StatusCode;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use super::roles::{self, After, SignedRoles};
 use super::vaults::{Need, path_uuid, require, vault_id};
 use crate::app::App;
 use crate::auth::{AuthSession, ClientIp, NoQuery};
@@ -17,7 +18,7 @@ use crate::clock::format_timestamp;
 use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
-use crate::extract::StrictJson;
+use crate::extract::{StrictJson, present};
 use crate::ratelimit::{Bucket, Quota};
 use crate::types::{KeyBox, Positive, Role, Uuid, WrappedKey, encode_base64url};
 
@@ -41,6 +42,8 @@ pub struct AcceptBody {
 #[serde(deny_unknown_fields)]
 pub struct RoleBody {
     role: Role,
+    #[serde(default, deserialize_with = "present")]
+    roles: Option<SignedRoles>,
 }
 
 async fn current_key_version(conn: &mut Conn, vault_id: &str) -> ApiResult<i64> {
@@ -81,6 +84,7 @@ pub async fn list(
                 "role": m.role,
                 "state": m.state,
                 "public_key": encode_base64url(&m.public_key),
+                "signing_public_key": m.signing_public_key.as_deref().map(encode_base64url),
                 "invited_by": m.invited_by,
                 "created": m.created_at,
             })
@@ -257,7 +261,9 @@ pub async fn accept_key(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Owner → target active, else `404` → at least one owner stays.
+/// Owner → target active, else `404` → same role is a no-op → at least one
+/// owner stays → signing keys of the owners afterwards → with a roles chain
+/// the next statement, checked against its head.
 pub async fn update(
     State(app): State<Arc<App>>,
     session: AuthSession,
@@ -283,7 +289,37 @@ pub async fn update(
     if membership.role == "owner" && db::vaults::owner_count(&mut tx, vault_id).await? <= 1 {
         return Err(ApiError::new(ErrorCode::LastOwner));
     }
+    let mut owners = db::roles::owner_keys(&mut tx, vault_id).await?;
+    if body.role == Role::Owner {
+        let keys = db::roles::account_keys(&mut *tx, target)
+            .await?
+            .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;
+        roles::require_signing_keys(std::slice::from_ref(&keys))?;
+        owners.push(keys);
+    } else {
+        owners.retain(|o| o.user_id != target);
+    }
+    let checked = if roles::has_chain(&mut tx, vault_id).await? {
+        roles::require_signing_keys(&owners)?;
+        let signed = body
+            .roles
+            .as_ref()
+            .ok_or_else(|| ApiError::new(ErrorCode::RolesRequired))?;
+        let after = After {
+            owners,
+            key_version: current_key_version(&mut tx, vault_id).await?,
+            new_key: false,
+        };
+        Some(roles::check(&mut tx, vault_id, user_id, signed, &after).await?)
+    } else if body.roles.is_some() {
+        return Err(ApiError::pointer("/roles", "the vault has no roles chain"));
+    } else {
+        None
+    };
     db::vaults::set_role(&mut tx, vault_id, target, role).await?;
+    if let Some(checked) = &checked {
+        roles::store(&mut tx, &app.audit, vault_id, checked, &now, &ip.hint()).await?;
+    }
     app.audit
         .vault_log(
             &mut tx,
@@ -361,6 +397,10 @@ pub async fn leave(
     }
     if membership.role == "owner" && db::vaults::owner_count(&mut tx, vault_id).await? <= 1 {
         return Err(ApiError::new(ErrorCode::LastOwner));
+    }
+    // A signed owner list must not keep naming an account that is gone.
+    if membership.role == "owner" && roles::has_chain(&mut tx, vault_id).await? {
+        return Err(ApiError::new(ErrorCode::OwnerMustDemote));
     }
     db::vaults::delete_membership(&mut tx, vault_id, user_id).await?;
     db::vaults::flag_rotation(&mut tx, vault_id).await?;

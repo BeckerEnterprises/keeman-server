@@ -25,13 +25,31 @@ fn upload(account: &Account, vault_id: &str, rotation_id: &str, objects: &[Value
     .json(&json!({ "objects": objects }))
 }
 
-fn commit(account: &Account, vault_id: &str, rotation_id: &str, body: &Value) -> Req {
+/// The commit request; a body without `roles` gets the next statement of
+/// the vault's roles chain (owners afterwards, next key version).
+async fn commit(
+    t: &TestApp,
+    account: &Account,
+    vault_id: &str,
+    rotation_id: &str,
+    body: &Value,
+) -> Req {
+    let mut body = body.clone();
+    if body.get("roles").is_none() && body.is_object() {
+        let removed: Vec<&str> = body["remove_user_ids"]
+            .as_array()
+            .map(|ids| ids.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default();
+        if let Some(roles) = t.rotation_roles(account, vault_id, &removed).await {
+            body["roles"] = roles;
+        }
+    }
     Req::post(&format!(
         "/v1/vaults/{vault_id}/rotations/{rotation_id}/commit"
     ))
     .token(&account.access_token)
     .idem(&new_uuid())
-    .json(body)
+    .json(&body)
 }
 
 fn commit_body(members: &[&Account], invites: &[&Account], remove: &[&Account]) -> Value {
@@ -196,15 +214,18 @@ async fn uploads_are_checked_and_replayed_without_body() {
     assert_eq!(reused.code(), "idempotency_key_reused");
 
     // Another owner cannot use Alice's rotation, and it expires after an hour.
-    t.call(
-        Req::new(
-            "PATCH",
-            &format!("/v1/vaults/{vault_id}/members/{}", bob.user_id),
+    let promoted = t
+        .call(
+            t.role_change(&alice, &vault_id, &bob.user_id, "owner")
+                .await,
         )
-        .token(&alice.access_token)
-        .json(&json!({ "role": "owner" })),
-    )
-    .await;
+        .await;
+    assert_eq!(
+        promoted.status,
+        StatusCode::NO_CONTENT,
+        "{}",
+        promoted.text()
+    );
     let foreign = t
         .call(upload(&bob, &vault_id, &rotation_id, &uploads))
         .await;
@@ -242,7 +263,9 @@ async fn a_commit_swaps_objects_keys_and_memberships() {
 
     // Erin's invitation is left out and therefore deleted; Dave is removed.
     let body = commit_body(&[&bob], &[&carol], &[&dave]);
-    let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+    let response = t
+        .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
+        .await;
     assert_eq!(response.status, StatusCode::OK, "{}", response.text());
     assert_eq!(response.json(), json!({ "revision": 2 }));
 
@@ -309,7 +332,9 @@ async fn incomplete_commits_are_refused() {
         .await;
     assert_eq!(missing.status, StatusCode::NO_CONTENT);
     let body = commit_body(&[&bob], &[&carol], &[]);
-    let incomplete = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+    let incomplete = t
+        .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
+        .await;
     assert_eq!(incomplete.code(), "rotation_incomplete");
     t.call(upload(&alice, &vault_id, &rotation_id, &uploads[..1]))
         .await;
@@ -321,16 +346,22 @@ async fn incomplete_commits_are_refused() {
         commit_body(&[&bob], &[&carol], &[&mallory]),
         commit_body(&[&bob, &mallory], &[], &[]),
     ] {
-        let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+        let response = t
+            .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
+            .await;
         assert_eq!(response.code(), "rotation_incomplete", "{body}");
     }
     let done = t
-        .call(commit(
-            &alice,
-            &vault_id,
-            &rotation_id,
-            &commit_body(&[&bob], &[&carol], &[]),
-        ))
+        .call(
+            commit(
+                &t,
+                &alice,
+                &vault_id,
+                &rotation_id,
+                &commit_body(&[&bob], &[&carol], &[]),
+            )
+            .await,
+        )
         .await;
     assert_eq!(done.status, StatusCode::OK, "{}", done.text());
 }
@@ -363,17 +394,21 @@ async fn structural_errors_of_a_commit() {
         (meta, "/drop_objects/0/id"),
         (duplicate, "/drop_objects/1/id"),
     ] {
-        let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+        let response = t
+            .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
+            .await;
         assert_eq!(response.status, StatusCode::BAD_REQUEST, "{body}");
         assert_eq!(response.field_error().0, pointer);
     }
-    let response = t.call(commit(&alice, &vault_id, &rotation_id, &aead)).await;
+    let response = t
+        .call(commit(&t, &alice, &vault_id, &rotation_id, &aead).await)
+        .await;
     assert_eq!(response.status, StatusCode::BAD_REQUEST);
     // An unknown dropped object is a stored 400.
     let mut unknown = base.clone();
     unknown["drop_objects"] = json!([{ "id": new_uuid(), "data": envelope(256) }]);
     let response = t
-        .call(commit(&alice, &vault_id, &rotation_id, &unknown))
+        .call(commit(&t, &alice, &vault_id, &rotation_id, &unknown).await)
         .await;
     assert_eq!(response.field_error().0, "/drop_objects/0/id");
 }
@@ -447,7 +482,9 @@ async fn tombstones_up_to_the_base_are_purged() {
     let mut body = commit_body(&[], &[], &[]);
     let tombstone = envelope(256);
     body["drop_objects"] = json!([{ "id": corrupt, "data": tombstone }]);
-    let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+    let response = t
+        .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
+        .await;
     assert_eq!(response.json(), json!({ "revision": 4 }));
 
     let old = t.changes(&alice, &vault_id, "since=1").await;
@@ -511,7 +548,9 @@ async fn dropping_an_entry_deletes_its_attachments() {
     .await;
     let mut body = commit_body(&[], &[], &[]);
     body["drop_objects"] = json!([{ "id": entry, "data": envelope(256) }]);
-    let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+    let response = t
+        .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
+        .await;
     assert_eq!(response.status, StatusCode::OK, "{}", response.text());
     assert_eq!(t.count("SELECT COUNT(*) FROM attachments").await, 0);
     let download = t.call(Req::get(&base).token(&alice.access_token)).await;
@@ -549,12 +588,16 @@ async fn a_vault_of_more_than_20_mib_is_rotated() {
         );
     }
     let response = t
-        .call(commit(
-            &alice,
-            &vault_id,
-            &rotation_id,
-            &commit_body(&[&bob], &[], &[]),
-        ))
+        .call(
+            commit(
+                &t,
+                &alice,
+                &vault_id,
+                &rotation_id,
+                &commit_body(&[&bob], &[], &[]),
+            )
+            .await,
+        )
         .await;
     assert_eq!(response.status, StatusCode::OK, "{}", response.text());
 
@@ -675,9 +718,13 @@ async fn oversized_drop_tombstones_count_at_commit() {
     let mut body = commit_body(&[], &[], &[]);
     // A 450-byte tombstone for a 300-byte object grows the usage by 150.
     body["drop_objects"] = json!([{ "id": dropped["id"], "data": envelope(450) }]);
-    let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+    let response = t
+        .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
+        .await;
     assert_eq!(response.code(), "quota_exceeded");
     body["drop_objects"] = json!([{ "id": dropped["id"], "data": envelope(256) }]);
-    let response = t.call(commit(&alice, &vault_id, &rotation_id, &body)).await;
+    let response = t
+        .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
+        .await;
     assert_eq!(response.status, StatusCode::OK, "{}", response.text());
 }

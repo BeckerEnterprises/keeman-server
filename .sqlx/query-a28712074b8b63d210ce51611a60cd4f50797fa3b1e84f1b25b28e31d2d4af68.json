@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT v.id AS \"vault_id!\", m.role, m.state, v.key_version AS vault_key_version,\n             m.key_version AS member_key_version, m.key_wrapped, m.key_box, m.sender_id,\n             m.pending_key_box, m.pending_key_version, m.pending_key_sender_id, v.revision,\n             v.rotation_required AS \"rotation_required: bool\",\n             (SELECT COUNT(*) FROM memberships c WHERE c.vault_id = v.id AND c.state = 'active') AS \"member_count!: i64\",\n             v.created_at\n           FROM memberships m JOIN vaults v ON v.id = m.vault_id\n           WHERE m.user_id = ?\n           ORDER BY v.created_at, v.id",
+  "query": "SELECT v.id AS \"vault_id!\", m.role, m.state, v.key_version AS vault_key_version,\n             m.key_version AS member_key_version, m.key_wrapped, m.key_box, m.sender_id,\n             m.pending_key_box, m.pending_key_version, m.pending_key_sender_id, v.revision,\n             v.rotation_required AS \"rotation_required: bool\",\n             (SELECT MAX(r.version) FROM vault_roles r WHERE r.vault_id = v.id) AS \"roles_version: i64\",\n             (SELECT COUNT(*) FROM memberships c WHERE c.vault_id = v.id AND c.state = 'active') AS \"member_count!: i64\",\n             v.created_at\n           FROM memberships m JOIN vaults v ON v.id = m.vault_id\n           WHERE m.user_id = ?\n           ORDER BY v.created_at, v.id",
   "describe": {
     "columns": [
       {
@@ -147,14 +147,20 @@
         }
       },
       {
-        "name": "member_count!: i64",
+        "name": "roles_version: i64",
         "ordinal": 13,
         "type_info": "Integer",
         "origin": "Expression"
       },
       {
-        "name": "created_at",
+        "name": "member_count!: i64",
         "ordinal": 14,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 15,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -181,9 +187,10 @@
       true,
       false,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "3637d8a581c863b34c5270f625a6972a2f2fe7e04b9fa72eb1beec575ffa6720"
+  "hash": "a28712074b8b63d210ce51611a60cd4f50797fa3b1e84f1b25b28e31d2d4af68"
 }

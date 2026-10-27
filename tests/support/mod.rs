@@ -3,6 +3,7 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 
 pub mod authenticator;
+pub mod roles;
 
 use std::net::SocketAddr;
 use std::path::Path;
@@ -21,6 +22,7 @@ use keeman_server::db::{Db, Tx};
 use keeman_server::events::socket::Timings;
 use keeman_server::favicon::Favicons;
 use keeman_server::types::encode_base64url;
+use ring::signature::{Ed25519KeyPair, KeyPair};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 use time::macros::datetime;
@@ -383,8 +385,10 @@ pub fn object(id: &str, kind: &str, data_len: usize) -> Value {
     json!({ "id": id, "type": kind, "key_version": 1, "data": envelope(data_len) })
 }
 
-/// `POST /v1/vaults` body: vault_meta, root group and recycle bin.
-pub fn vault_body(vault_id: &str) -> Value {
+/// `POST /v1/vaults` body: vault_meta, root group and recycle bin, and the
+/// first statement of the roles chain signed by the creator.
+pub fn vault_body(creator: &Account, vault_id: &str) -> Value {
+    let first = roles::genesis(vault_id, vec![roles::owner(creator)], &creator.user_id, 1);
     json!({
         "vault_id": vault_id,
         "key_wrapped": envelope(73),
@@ -393,6 +397,7 @@ pub fn vault_body(vault_id: &str) -> Value {
             object(&new_uuid(), "group", 300),
             object(&new_uuid(), "group", 300),
         ],
+        "roles": roles::signed(creator, &first),
     })
 }
 
@@ -413,7 +418,7 @@ impl TestApp {
                 Req::post("/v1/vaults")
                     .token(&account.access_token)
                     .idem(&new_uuid())
-                    .json(&vault_body(&vault_id)),
+                    .json(&vault_body(account, &vault_id)),
             )
             .await;
         assert_eq!(response.status, StatusCode::CREATED, "{}", response.text());
@@ -493,6 +498,94 @@ impl TestApp {
         );
     }
 
+    /// The head of the roles chain as the account reads it.
+    pub async fn roles_head(
+        &self,
+        account: &Account,
+        vault_id: &str,
+    ) -> Option<keeman_server::roles::Statement> {
+        let chain = self
+            .call(Req::get(&format!("/v1/vaults/{vault_id}/roles")).token(&account.access_token))
+            .await;
+        assert_eq!(chain.status, StatusCode::OK, "{}", chain.text());
+        chain.json()["statements"]
+            .as_array()
+            .unwrap()
+            .last()
+            .map(roles::read)
+    }
+
+    /// The server's active owners after the given change, as statement owners.
+    pub async fn owners_after(
+        &self,
+        account: &Account,
+        vault_id: &str,
+        change: &[(&str, &str)],
+    ) -> Vec<keeman_server::roles::Owner> {
+        let list = self
+            .call(Req::get(&format!("/v1/vaults/{vault_id}/members")).token(&account.access_token))
+            .await
+            .json();
+        let mut owners = Vec::new();
+        for member in list["members"].as_array().unwrap() {
+            let id = member["user_id"].as_str().unwrap();
+            let role = change
+                .iter()
+                .find(|(user, _)| *user == id)
+                .map_or_else(|| member["role"].as_str().unwrap(), |(_, role)| *role);
+            if role == "owner"
+                && member["state"] == "active"
+                && let Some(signing) = member["signing_public_key"].as_str()
+            {
+                owners.push(roles::owner_with(
+                    id,
+                    member["public_key"].as_str().unwrap(),
+                    signing,
+                ));
+            }
+        }
+        owners
+    }
+
+    /// `PATCH …/members/{user_id}`, with the next statement once the vault
+    /// has a roles chain.
+    pub async fn role_change(
+        &self,
+        signer: &Account,
+        vault_id: &str,
+        user_id: &str,
+        role: &str,
+    ) -> Req {
+        let mut body = json!({ "role": role });
+        if let Some(head) = self.roles_head(signer, vault_id).await {
+            let owners = self
+                .owners_after(signer, vault_id, &[(user_id, role)])
+                .await;
+            body["roles"] =
+                roles::signed(signer, &roles::successor(&head, owners, &signer.user_id));
+        }
+        Req::new("PATCH", &format!("/v1/vaults/{vault_id}/members/{user_id}"))
+            .token(&signer.access_token)
+            .json(&body)
+    }
+
+    /// The statement of a rotation commit: owners afterwards without the
+    /// removed accounts, next key version.
+    pub async fn rotation_roles(
+        &self,
+        signer: &Account,
+        vault_id: &str,
+        removed: &[&str],
+    ) -> Option<Value> {
+        let head = self.roles_head(signer, vault_id).await?;
+        let change: Vec<(&str, &str)> = removed.iter().map(|id| (*id, "gone")).collect();
+        let owners = self.owners_after(signer, vault_id, &change).await;
+        Some(roles::signed(
+            signer,
+            &roles::rotated(&head, owners, &signer.user_id),
+        ))
+    }
+
     /// The vault as `GET /v1/vaults` shows it to the account.
     pub async fn listed(&self, account: &Account, vault_id: &str) -> Option<Value> {
         let list = self
@@ -553,6 +646,8 @@ pub struct Account {
     pub recovery_auth_key: String,
     pub salt: String,
     pub public_key: String,
+    pub signing_seed: [u8; 32],
+    pub signing_public_key: String,
     pub session_id: String,
     pub access_token: String,
     pub refresh_token: String,
@@ -560,6 +655,8 @@ pub struct Account {
 
 impl Account {
     pub fn new(email: &str) -> Self {
+        let signing_seed = random_bytes::<32>().unwrap();
+        let pair = Ed25519KeyPair::from_seed_unchecked(&signing_seed).unwrap();
         Self {
             user_id: new_uuid(),
             email: email.to_string(),
@@ -567,6 +664,8 @@ impl Account {
             recovery_auth_key: random_b64::<32>(),
             salt: random_b64::<16>(),
             public_key: random_b64::<32>(),
+            signing_seed,
+            signing_public_key: encode_base64url(pair.public_key().as_ref()),
             session_id: String::new(),
             access_token: String::new(),
             refresh_token: String::new(),
@@ -583,6 +682,7 @@ impl Account {
             "user_key_wrapped": envelope(73),
             "public_key": self.public_key,
             "private_key_wrapped": envelope(73),
+            "signing_public_key": self.signing_public_key,
             "recovery": { "auth_key": self.recovery_auth_key, "user_key_wrapped": envelope(73) },
             "user_data": envelope(297),
             "device": { "name": "Test device", "client_type": "cli" },

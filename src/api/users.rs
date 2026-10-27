@@ -29,6 +29,7 @@ fn public(user: db::users::PublicUser) -> Value {
         "user_id": user.id,
         "email": user.email,
         "public_key": encode_base64url(&user.public_key),
+        "signing_public_key": user.signing_public_key.as_deref().map(encode_base64url),
     })
 }
 

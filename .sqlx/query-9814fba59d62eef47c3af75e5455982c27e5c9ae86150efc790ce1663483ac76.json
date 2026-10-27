@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", email, kdf_params, kdf_salt, user_key_wrapped, public_key, private_key_wrapped,\n             user_data, user_data_revision, totp_enabled AS \"totp_enabled: bool\",\n             (SELECT COUNT(*) FROM webauthn_credentials w WHERE w.user_id = users.id) AS \"webauthn_credentials!: i64\",\n             (SELECT COUNT(*) FROM backup_codes b WHERE b.user_id = users.id AND b.used_at IS NULL) AS \"backup_codes_remaining!: i64\",\n             created_at\n           FROM users WHERE id = ?",
+  "query": "SELECT id AS \"id!\", email, kdf_params, kdf_salt, user_key_wrapped, public_key, private_key_wrapped,\n             signing_public_key, user_data, user_data_revision, totp_enabled AS \"totp_enabled: bool\",\n             (SELECT COUNT(*) FROM webauthn_credentials w WHERE w.user_id = users.id) AS \"webauthn_credentials!: i64\",\n             (SELECT COUNT(*) FROM backup_codes b WHERE b.user_id = users.id AND b.used_at IS NULL) AS \"backup_codes_remaining!: i64\",\n             created_at\n           FROM users WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -81,8 +81,19 @@
         }
       },
       {
-        "name": "user_data",
+        "name": "signing_public_key",
         "ordinal": 7,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "signing_public_key"
+          }
+        }
+      },
+      {
+        "name": "user_data",
+        "ordinal": 8,
         "type_info": "Blob",
         "origin": {
           "Table": {
@@ -93,7 +104,7 @@
       },
       {
         "name": "user_data_revision",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -104,7 +115,7 @@
       },
       {
         "name": "totp_enabled: bool",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -115,19 +126,19 @@
       },
       {
         "name": "webauthn_credentials!: i64",
-        "ordinal": 10,
-        "type_info": "Integer",
-        "origin": "Expression"
-      },
-      {
-        "name": "backup_codes_remaining!: i64",
         "ordinal": 11,
         "type_info": "Integer",
         "origin": "Expression"
       },
       {
-        "name": "created_at",
+        "name": "backup_codes_remaining!: i64",
         "ordinal": 12,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 13,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -148,6 +159,7 @@
       false,
       false,
       false,
+      true,
       false,
       false,
       false,
@@ -156,5 +168,5 @@
       false
     ]
   },
-  "hash": "aa14b7df3af4800dee3006e122c76202005efcac3464bb36e384255cae8b5b54"
+  "hash": "9814fba59d62eef47c3af75e5455982c27e5c9ae86150efc790ce1663483ac76"
 }

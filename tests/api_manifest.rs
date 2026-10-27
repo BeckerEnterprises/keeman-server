@@ -96,7 +96,7 @@ async fn the_type_and_the_derived_ids_belong_together() {
         vec![object(&new_uuid(), "manifest", 300)],
         vec![object(&root_id(&new_uuid()), "manifest", 300)],
     ] {
-        let mut body = vault_body(&new_uuid());
+        let mut body = vault_body(&alice, &new_uuid());
         body["objects"].as_array_mut().unwrap().extend(objects);
         let response = t
             .call(
@@ -110,7 +110,7 @@ async fn the_type_and_the_derived_ids_belong_together() {
         assert_eq!(response.field_error().0, "/objects/3/id");
     }
     let new_vault = new_uuid();
-    let mut body = vault_body(&new_vault);
+    let mut body = vault_body(&alice, &new_vault);
     body["objects"].as_array_mut().unwrap().extend([
         object(&root_id(&new_vault), "manifest", 300),
         object(&shard_id(&new_vault, 0), "manifest", 300),
@@ -238,6 +238,7 @@ async fn a_manifest_is_never_dropped_and_counts_for_completeness() {
         )
         .await;
     let rotation_id = opened.json()["rotation_id"].as_str().unwrap().to_string();
+    let roles = t.rotation_roles(&alice, &vault_id, &[]).await.unwrap();
     let commit = |drop: Value| {
         Req::post(&format!(
             "/v1/vaults/{vault_id}/rotations/{rotation_id}/commit"
@@ -250,6 +251,7 @@ async fn a_manifest_is_never_dropped_and_counts_for_completeness() {
             "invite_keys": [],
             "remove_user_ids": [],
             "drop_objects": drop,
+            "roles": roles,
         }))
     };
 

@@ -61,6 +61,9 @@ error_codes! {
     SoleOwnerOfSharedVault => ("sole_owner_of_shared_vault", CONFLICT, "Sole owner of a shared vault"),
     UseRotate => ("use_rotate", CONFLICT, "Use a key rotation"),
     TwoFactorStateInvalid => ("two_factor_state_invalid", CONFLICT, "Two-factor state invalid"),
+    RolesConflict => ("roles_conflict", CONFLICT, "Roles statement does not follow the head"),
+    OwnerMustDemote => ("owner_must_demote", CONFLICT, "Owner must demote itself first"),
+    SigningKeyMissing => ("signing_key_missing", CONFLICT, "Signing key missing"),
     ResyncRequired => ("resync_required", GONE, "Resync required"),
     PayloadTooLarge => ("payload_too_large", PAYLOAD_TOO_LARGE, "Payload too large"),
     AttachmentTooLarge => ("attachment_too_large", PAYLOAD_TOO_LARGE, "Attachment too large"),
@@ -72,6 +75,7 @@ error_codes! {
     IdempotencyKeyReused => ("idempotency_key_reused", UNPROCESSABLE_ENTITY, "Idempotency key reused"),
     AttachmentIncomplete => ("attachment_incomplete", UNPROCESSABLE_ENTITY, "Attachment incomplete"),
     ManifestRequired => ("manifest_required", UNPROCESSABLE_ENTITY, "Manifest required"),
+    RolesRequired => ("roles_required", UNPROCESSABLE_ENTITY, "Roles statement required"),
     RateLimited => ("rate_limited", TOO_MANY_REQUESTS, "Too many requests"),
     InternalError => ("internal_error", INTERNAL_SERVER_ERROR, "Internal error"),
     QuotaExceeded => ("quota_exceeded", INSUFFICIENT_STORAGE, "Quota exceeded"),
@@ -124,6 +128,7 @@ pub struct ProblemData {
     pub errors: Vec<FieldError>,
     pub current_revision: Option<i64>,
     pub current_key_version: Option<i64>,
+    pub current_roles_version: Option<i64>,
     pub conflicts: Vec<Conflict>,
 }
 
@@ -166,6 +171,9 @@ impl ProblemData {
         }
         if let Some(version) = self.current_key_version {
             body.insert("current_key_version".into(), json!(version));
+        }
+        if let Some(version) = self.current_roles_version {
+            body.insert("current_roles_version".into(), json!(version));
         }
         body
     }
@@ -238,6 +246,13 @@ impl ApiError {
     pub fn current_key_version(mut self, version: i64) -> Self {
         self.problem.current_key_version = Some(version);
         self
+    }
+
+    /// `409 roles_conflict` with the version of the stored head (0 without one).
+    pub fn roles_conflict(head_version: i64) -> Self {
+        let mut error = Self::new(ErrorCode::RolesConflict);
+        error.problem.current_roles_version = Some(head_version);
+        error
     }
 
     /// `409 conflict` of a batch with the complete conflict list.

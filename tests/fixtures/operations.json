@@ -100,6 +100,11 @@
     "access": "reauth"
   },
   {
+    "method": "PUT",
+    "path": "/v1/me/signing-key",
+    "access": "reauth"
+  },
+  {
     "method": "POST",
     "path": "/v1/me/totp/setup",
     "access": "reauth"
@@ -207,6 +212,16 @@
   {
     "method": "DELETE",
     "path": "/v1/vaults/{vault_id}/members/me",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/vaults/{vault_id}/roles",
+    "access": "token"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/vaults/{vault_id}/roles",
     "access": "token"
   },
   {

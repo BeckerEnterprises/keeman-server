@@ -17,7 +17,7 @@ async fn create_and_list() {
     let t = TestApp::new().await;
     let alice = t.register("alice@example.com").await;
     let vault_id = new_uuid();
-    let body = vault_body(&vault_id);
+    let body = vault_body(&alice, &vault_id);
     let response = t
         .call(create(&alice.access_token, &new_uuid(), &body))
         .await;
@@ -41,6 +41,7 @@ async fn create_and_list() {
             "invitation": null,
             "revision": 1,
             "rotation_required": false,
+            "roles_version": 1,
             "member_count": 1,
             "created": "2026-10-23T08:00:00.000Z",
         }] })
@@ -100,7 +101,7 @@ async fn idempotent_create_replays_the_first_answer() {
     let t = TestApp::new().await;
     let alice = t.register("alice@example.com").await;
     let vault_id = new_uuid();
-    let body = vault_body(&vault_id);
+    let body = vault_body(&alice, &vault_id);
     let key = new_uuid();
     let first = t.call(create(&alice.access_token, &key, &body)).await;
     let second = t.call(create(&alice.access_token, &key, &body)).await;
@@ -120,7 +121,11 @@ async fn idempotent_create_replays_the_first_answer() {
 
     // The same key with another body: 422, never stored.
     let other = t
-        .call(create(&alice.access_token, &key, &vault_body(&new_uuid())))
+        .call(create(
+            &alice.access_token,
+            &key,
+            &vault_body(&alice, &new_uuid()),
+        ))
         .await;
     assert_eq!(other.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(other.code(), "idempotency_key_reused");
@@ -139,7 +144,11 @@ async fn idempotent_create_replays_the_first_answer() {
     // Keys are scoped per account.
     let bob = t.register("bob@example.com").await;
     let response = t
-        .call(create(&bob.access_token, &key, &vault_body(&new_uuid())))
+        .call(create(
+            &bob.access_token,
+            &key,
+            &vault_body(&bob, &new_uuid()),
+        ))
         .await;
     assert_eq!(response.status, StatusCode::CREATED);
 }
@@ -163,7 +172,7 @@ async fn stored_answers_never_contain_tokens() {
 async fn concurrent_repetitions_have_one_effect() {
     let t = TestApp::new().await;
     let alice = t.register("alice@example.com").await;
-    let body = vault_body(&new_uuid());
+    let body = vault_body(&alice, &new_uuid());
     let key = new_uuid();
     let (a, b) = tokio::join!(
         t.call(create(&alice.access_token, &key, &body)),
@@ -178,7 +187,7 @@ async fn concurrent_repetitions_have_one_effect() {
 async fn idempotency_key_is_required_and_canonical() {
     let t = TestApp::new().await;
     let alice = t.register("alice@example.com").await;
-    let body = vault_body(&new_uuid());
+    let body = vault_body(&alice, &new_uuid());
     let without = Req::post("/v1/vaults")
         .token(&alice.access_token)
         .json(&body);
@@ -222,7 +231,8 @@ async fn create_rejects_invalid_objects() {
     let vault_id = new_uuid();
     let meta = object(&vault_id, "vault_meta", 300);
     let group = object(&new_uuid(), "group", 300);
-    let with = |objects: Vec<Value>| json!({ "vault_id": vault_id, "key_wrapped": envelope(73), "objects": objects });
+    let roles = vault_body(&alice, &vault_id)["roles"].clone();
+    let with = |objects: Vec<Value>| json!({ "vault_id": vault_id, "key_wrapped": envelope(73), "objects": objects, "roles": roles });
     let mut version_two = group.clone();
     version_two["key_version"] = json!(2);
     let mut short = group.clone();
@@ -258,7 +268,7 @@ async fn create_rejects_invalid_objects() {
             "/objects/1/type",
         ),
         (
-            json!({ "vault_id": vault_id, "key_wrapped": envelope(72), "objects": [meta] }),
+            json!({ "vault_id": vault_id, "key_wrapped": envelope(72), "objects": [meta], "roles": roles }),
             "/key_wrapped",
         ),
     ];

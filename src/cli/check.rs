@@ -10,7 +10,7 @@ use time::{Duration, OffsetDateTime};
 use super::{CliResult, environment};
 use crate::clock::format_timestamp;
 use crate::config::Config;
-use crate::db::{Db, attachments, maintenance};
+use crate::db::{Db, attachments, maintenance, roles};
 use crate::storage::attachments::Storage;
 
 pub async fn check(config_path: &Path, now: OffsetDateTime) -> CliResult<()> {
@@ -129,5 +129,46 @@ async fn database(
     for id in maintenance::uploads_started_before(&mut conn, &day_ago).await? {
         problems.push(format!("upload {id} started more than 24 h ago"));
     }
+    problems.extend(role_chains(&roles::all_links(&mut conn).await?));
     Ok(())
+}
+
+/// Roles chains whose versions have gaps or whose statements do not link to
+/// their predecessors.
+fn role_chains(links: &[roles::Link]) -> Vec<String> {
+    let mut problems = Vec::new();
+    let mut previous: Option<&roles::Link> = None;
+    for link in links {
+        let vault = &link.vault_id;
+        let before = previous.filter(|p| p.vault_id == link.vault_id);
+        let expected = before.map_or(1, |p| p.version + 1);
+        if link.version != expected {
+            problems.push(format!(
+                "roles chain of vault {vault}: version {} follows {}",
+                link.version,
+                expected - 1
+            ));
+        }
+        match crate::roles::parse(&link.statement) {
+            None => problems.push(format!(
+                "roles chain of vault {vault}: statement {} is unreadable",
+                link.version
+            )),
+            Some(statement) => {
+                let linked = match before {
+                    Some(p) => statement.previous.is_some_and(|h| h[..] == p.hash[..]),
+                    None => statement.previous.is_none(),
+                };
+                let hash_ok = crate::roles::hash(&link.statement)[..] == link.hash[..];
+                if statement.version != link.version || !linked || !hash_ok {
+                    problems.push(format!(
+                        "roles chain of vault {vault}: statement {} does not link to its predecessor",
+                        link.version
+                    ));
+                }
+            }
+        }
+        previous = Some(link);
+    }
+    problems
 }

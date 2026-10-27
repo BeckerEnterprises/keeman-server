@@ -35,7 +35,7 @@ const MAX_CURSOR: usize = 256;
 
 /// A counter in a query string: decimal digits without sign or leading
 /// zeros (except `0`), at most 2^53 - 1, never percent-decoded.
-fn counter(text: &str) -> Option<i64> {
+pub(crate) fn counter(text: &str) -> Option<i64> {
     let digits = !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit());
     if !digits || (text.len() > 1 && text.starts_with('0')) || text.len() > 16 {
         return None;

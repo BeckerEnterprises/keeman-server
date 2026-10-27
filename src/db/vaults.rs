@@ -108,6 +108,7 @@ pub struct Listed {
     pub pending_key_sender_id: Option<String>,
     pub revision: i64,
     pub rotation_required: bool,
+    pub roles_version: Option<i64>,
     pub member_count: i64,
     pub created_at: String,
 }
@@ -122,6 +123,7 @@ pub async fn list_for_user<'e>(
              m.key_version AS member_key_version, m.key_wrapped, m.key_box, m.sender_id,
              m.pending_key_box, m.pending_key_version, m.pending_key_sender_id, v.revision,
              v.rotation_required AS "rotation_required: bool",
+             (SELECT MAX(r.version) FROM vault_roles r WHERE r.vault_id = v.id) AS "roles_version: i64",
              (SELECT COUNT(*) FROM memberships c WHERE c.vault_id = v.id AND c.state = 'active') AS "member_count!: i64",
              v.created_at
            FROM memberships m JOIN vaults v ON v.id = m.vault_id
@@ -264,6 +266,7 @@ pub struct Member {
     pub role: String,
     pub state: String,
     pub public_key: Vec<u8>,
+    pub signing_public_key: Option<Vec<u8>>,
     pub invited_by: Option<String>,
     pub created_at: String,
 }
@@ -272,7 +275,7 @@ pub async fn member_list(conn: &mut Conn, vault_id: &str) -> Result<Vec<Member>,
     sqlx::query_as!(
         Member,
         r#"SELECT m.user_id AS "user_id!", u.email, m.role, m.state, u.public_key,
-             m.sender_id AS invited_by, m.created_at
+             u.signing_public_key, m.sender_id AS invited_by, m.created_at
            FROM memberships m JOIN users u ON u.id = m.user_id
            WHERE m.vault_id = ?
            ORDER BY m.created_at, m.user_id"#,

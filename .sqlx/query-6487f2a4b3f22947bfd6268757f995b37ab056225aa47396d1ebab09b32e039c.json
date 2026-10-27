@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", email, public_key FROM users WHERE email = ?",
+  "query": "SELECT id AS \"id!\", email, public_key, signing_public_key FROM users WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,17 @@
             "name": "public_key"
           }
         }
+      },
+      {
+        "name": "signing_public_key",
+        "ordinal": 3,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "signing_public_key"
+          }
+        }
       }
     ],
     "parameters": {
@@ -43,8 +54,9 @@
     "nullable": [
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "15a627d13939ac42313e49ce302bf1ce3d4daf1f976d31cb3cfe80d458f93927"
+  "hash": "6487f2a4b3f22947bfd6268757f995b37ab056225aa47396d1ebab09b32e039c"
 }

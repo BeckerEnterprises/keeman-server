@@ -354,7 +354,7 @@ async fn idempotent_batches() {
         Req::post("/v1/vaults")
             .token(&alice.access_token)
             .idem(&create_key)
-            .json(&support::vault_body(&new_uuid())),
+            .json(&support::vault_body(&alice, &new_uuid())),
     )
     .await;
     let response = t.call(send(&create_key, &body)).await;
@@ -670,7 +670,7 @@ async fn cleanup_works_in_blocks() {
 async fn idempotency_records_expire_after_a_day() {
     let t = TestApp::new().await;
     let alice = t.register("alice@example.com").await;
-    let body = support::vault_body(&new_uuid());
+    let body = support::vault_body(&alice, &new_uuid());
     let key = new_uuid();
     let send = || {
         Req::post("/v1/vaults")

@@ -11,6 +11,7 @@ use axum::response::Response;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use super::roles::{self, After, SignedRoles};
 use crate::app::App;
 use crate::audit::Audit;
 use crate::auth::{AuthSession, ClientIp, NoQuery, Reauthed};
@@ -154,6 +155,7 @@ pub async fn list(
                 "invitation": invitation,
                 "revision": v.revision,
                 "rotation_required": v.rotation_required,
+                "roles_version": v.roles_version,
                 "member_count": v.member_count,
                 "created": v.created_at,
             })
@@ -179,6 +181,7 @@ pub struct CreateBody {
     vault_id: Uuid,
     key_wrapped: WrappedKey,
     objects: Vec<ObjectUpload>,
+    roles: SignedRoles,
 }
 
 /// Structural checks before the transaction.
@@ -248,6 +251,16 @@ async fn create_in(
     if db::vaults::exists(conn, vault_id).await? {
         return Err(ApiError::new(ErrorCode::Conflict));
     }
+    // The first statement of the roles chain names the creator alone.
+    let creator = db::roles::account_keys(&mut *conn, user_id)
+        .await?
+        .ok_or_else(|| ApiError::new(ErrorCode::SessionInvalid))?;
+    let after = After {
+        owners: vec![creator],
+        key_version: 1,
+        new_key: false,
+    };
+    let checked = roles::check(conn, vault_id, user_id, &body.roles, &after).await?;
     // The new vault counts against its creator.
     let growth = body
         .objects
@@ -278,6 +291,7 @@ async fn create_in(
     audit
         .vault_event(conn, now, "vault_created", user_id, vault_id, Some(ip_hint))
         .await?;
+    roles::store(conn, audit, vault_id, &checked, now, ip_hint).await?;
     Ok((StatusCode::CREATED, json!({ "revision": 1 })))
 }
 

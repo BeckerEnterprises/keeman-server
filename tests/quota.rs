@@ -121,7 +121,7 @@ async fn creating_a_vault_counts_against_the_creator() {
         Req::post("/v1/vaults")
             .token(&alice.access_token)
             .idem(&key)
-            .json(&vault_body(&second))
+            .json(&vault_body(&alice, &second))
     };
     let response = t.call(create()).await;
     assert_eq!(response.status, StatusCode::INSUFFICIENT_STORAGE);

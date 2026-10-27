@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET signing_public_key = ?, updated_at = ?\n         WHERE id = ? AND signing_public_key IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "532259ffd4b6471e7ad4296f21aa60d058a9f07d390c86357e5c9381312d3a99"
+}

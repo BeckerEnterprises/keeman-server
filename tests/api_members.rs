@@ -12,6 +12,7 @@ fn members(account: &Account, vault_id: &str) -> Req {
     Req::get(&format!("/v1/vaults/{vault_id}/members")).token(&account.access_token)
 }
 
+/// A role change without a statement; refused before any statement check.
 fn role(account: &Account, vault_id: &str, user_id: &str, role: &str) -> Req {
     Req::new("PATCH", &format!("/v1/vaults/{vault_id}/members/{user_id}"))
         .token(&account.access_token)
@@ -231,19 +232,37 @@ async fn roles_change_while_one_owner_remains() {
     t.invite_member(&alice, &vault_id, &carol).await;
 
     let last = t
-        .call(role(&alice, &vault_id, &alice.user_id, "member"))
+        .call(
+            t.role_change(&alice, &vault_id, &alice.user_id, "member")
+                .await,
+        )
         .await;
     assert_eq!(last.code(), "last_owner");
-    let by_member = t.call(role(&bob, &vault_id, &bob.user_id, "owner")).await;
+    let by_member = t
+        .call(t.role_change(&bob, &vault_id, &bob.user_id, "owner").await)
+        .await;
     assert_eq!(by_member.code(), "forbidden");
     let pending = t
-        .call(role(&alice, &vault_id, &carol.user_id, "owner"))
+        .call(
+            t.role_change(&alice, &vault_id, &carol.user_id, "owner")
+                .await,
+        )
         .await;
     assert_eq!(pending.code(), "not_found");
-    let invalid = t.call(role(&alice, &vault_id, &bob.user_id, "admin")).await;
+    let invalid = t
+        .call(
+            t.role_change(&alice, &vault_id, &bob.user_id, "admin")
+                .await,
+        )
+        .await;
     assert_eq!(invalid.status, StatusCode::BAD_REQUEST);
 
-    let promoted = t.call(role(&alice, &vault_id, &bob.user_id, "owner")).await;
+    let promoted = t
+        .call(
+            t.role_change(&alice, &vault_id, &bob.user_id, "owner")
+                .await,
+        )
+        .await;
     assert_eq!(
         promoted.status,
         StatusCode::NO_CONTENT,
@@ -251,14 +270,24 @@ async fn roles_change_while_one_owner_remains() {
         promoted.text()
     );
     assert_eq!(t.listed(&bob, &vault_id).await.unwrap()["role"], "owner");
-    let same = t.call(role(&alice, &vault_id, &bob.user_id, "owner")).await;
+    let same = t
+        .call(
+            t.role_change(&alice, &vault_id, &bob.user_id, "owner")
+                .await,
+        )
+        .await;
     assert_eq!(same.status, StatusCode::NO_CONTENT);
     // Owners may demote other owners, also themselves, while one remains.
     let demoted = t
-        .call(role(&bob, &vault_id, &alice.user_id, "member"))
+        .call(
+            t.role_change(&bob, &vault_id, &alice.user_id, "member")
+                .await,
+        )
         .await;
     assert_eq!(demoted.status, StatusCode::NO_CONTENT);
-    let alone = t.call(role(&bob, &vault_id, &bob.user_id, "member")).await;
+    let alone = t
+        .call(t.role_change(&bob, &vault_id, &bob.user_id, "member").await)
+        .await;
     assert_eq!(alone.code(), "last_owner");
     let events = t.security_events().await;
     assert_eq!(
@@ -280,7 +309,11 @@ async fn leaving_flags_the_vault_and_drops_the_leavers_grants() {
     let vault_id = t.create_vault(&alice).await;
     t.share(&alice, &vault_id, &bob).await;
     t.share(&alice, &vault_id, &dave).await;
-    t.call(role(&alice, &vault_id, &bob.user_id, "owner")).await;
+    t.call(
+        t.role_change(&alice, &vault_id, &bob.user_id, "owner")
+            .await,
+    )
+    .await;
     // Bob invites Carol and left a pending key for Dave after a rotation.
     assert_eq!(
         t.invite_member(&bob, &vault_id, &carol).await.status,
@@ -293,6 +326,15 @@ async fn leaving_flags_the_vault_and_drops_the_leavers_grants() {
     ))
     .await;
 
+    // An owner in a signed owner list demotes itself first.
+    assert_eq!(
+        t.call(leave(&bob, &vault_id)).await.code(),
+        "owner_must_demote"
+    );
+    let demoted = t
+        .call(t.role_change(&bob, &vault_id, &bob.user_id, "member").await)
+        .await;
+    assert_eq!(demoted.status, StatusCode::NO_CONTENT, "{}", demoted.text());
     let left = t.call(leave(&bob, &vault_id)).await;
     assert_eq!(left.status, StatusCode::NO_CONTENT, "{}", left.text());
     assert!(t.listed(&bob, &vault_id).await.is_none());

@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT version, statement, signature FROM vault_roles\n         WHERE vault_id = ? AND version > ? ORDER BY version",
+  "describe": {
+    "columns": [
+      {
+        "name": "version",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vault_roles",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "name": "statement",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "vault_roles",
+            "name": "statement"
+          }
+        }
+      },
+      {
+        "name": "signature",
+        "ordinal": 2,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "vault_roles",
+            "name": "signature"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "dd01bd8a7d32daec4b74925f457bd42c2e24d10c1b1df45e0eddc56df970cb0e"
+}

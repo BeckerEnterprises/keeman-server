@@ -1515,6 +1515,7 @@ dependencies = [
  "openssl",
  "proptest",
  "reqwest",
+ "ring",
  "rustls",
  "rustls-platform-verifier",
  "scraper",

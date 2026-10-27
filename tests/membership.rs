@@ -103,6 +103,21 @@ fn requests(f: &Fixture, caller: &Account, reauth: &str) -> Vec<(&'static str, b
             Req::delete(&format!("/v1/vaults/{v}/members/{}", f.member)),
         ),
         (
+            "GET /v1/vaults/{vault_id}/roles",
+            false,
+            Req::get(&format!("/v1/vaults/{v}/roles")),
+        ),
+        (
+            "POST /v1/vaults/{vault_id}/roles",
+            true,
+            Req::post(&format!("/v1/vaults/{v}/roles")).json(&json!({
+                "roles": support::roles::signed(
+                    caller,
+                    &support::roles::genesis(v, vec![support::roles::owner(caller)], &caller.user_id, 1),
+                ),
+            })),
+        ),
+        (
             "POST /v1/vaults/{vault_id}/rotations",
             true,
             Req::post(&format!("/v1/vaults/{v}/rotations"))
@@ -237,6 +252,15 @@ async fn every_vault_operation_checks_membership_and_role() {
     let reauth = t.reauth(&carol).await;
     for (op, _, request) in requests(&fixture, &carol, &reauth) {
         if op.ends_with("/accept") || op.ends_with("/decline") {
+            continue;
+        }
+        // Invitees read the roles chain before they accept.
+        if op == "GET /v1/vaults/{vault_id}/roles" {
+            assert_eq!(
+                t.call(request).await.status,
+                StatusCode::OK,
+                "pending: {op}"
+            );
             continue;
         }
         assert_eq!(t.call(request).await.code(), "forbidden", "pending: {op}");

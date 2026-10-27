@@ -24,6 +24,7 @@ pub mod maintenance;
 pub mod objects;
 pub mod passkeys;
 pub mod quota;
+pub mod roles;
 pub mod rotations;
 pub mod security_log;
 pub mod sessions;

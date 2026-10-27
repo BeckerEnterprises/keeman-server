@@ -25,7 +25,7 @@ async fn lookup_finds_accounts_by_normalized_email() {
     assert_eq!(response.status, StatusCode::OK, "{}", response.text());
     assert_eq!(
         response.json(),
-        json!({ "user_id": alice.user_id, "email": "alice@example.com", "public_key": alice.public_key })
+        json!({ "user_id": alice.user_id, "email": "alice@example.com", "public_key": alice.public_key, "signing_public_key": alice.signing_public_key })
     );
     // The own account is found as well; the client refuses to invite itself.
     let own = t.call(lookup(&bob.access_token, "bob@example.com")).await;
@@ -110,7 +110,7 @@ async fn public_key_requires_a_shared_membership() {
     assert_eq!(response.status, StatusCode::OK, "{}", response.text());
     assert_eq!(
         response.json(),
-        json!({ "user_id": bob.user_id, "email": "bob@example.com", "public_key": bob.public_key })
+        json!({ "user_id": bob.user_id, "email": "bob@example.com", "public_key": bob.public_key, "signing_public_key": bob.signing_public_key })
     );
     let back = t.call(key(&bob, &alice.user_id)).await;
     assert_eq!(back.json()["public_key"], json!(alice.public_key));

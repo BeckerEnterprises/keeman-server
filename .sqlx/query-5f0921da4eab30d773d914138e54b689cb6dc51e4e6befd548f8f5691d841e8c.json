@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT version, statement, hash FROM vault_roles WHERE vault_id = ?\n         ORDER BY version DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "version",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vault_roles",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "name": "statement",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "vault_roles",
+            "name": "statement"
+          }
+        }
+      },
+      {
+        "name": "hash",
+        "ordinal": 2,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "vault_roles",
+            "name": "hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5f0921da4eab30d773d914138e54b689cb6dc51e4e6befd548f8f5691d841e8c"
+}

@@ -566,13 +566,22 @@ async fn delete_account_removes_solo_vaults_and_leaves_shared_ones() {
     assert_eq!(response.code(), "reauth_required");
 
     let reauth = t.reauth(&alice).await;
-    let response = t
+    let delete = || {
+        Req::delete("/v1/me")
+            .token(&alice.access_token)
+            .reauth(&reauth)
+    };
+    // A co-owned vault with a signed owner list: demote first.
+    let response = t.call(delete()).await;
+    assert_eq!(response.code(), "owner_must_demote");
+    let demoted = t
         .call(
-            Req::delete("/v1/me")
-                .token(&alice.access_token)
-                .reauth(&reauth),
+            t.role_change(&alice, &shared, &alice.user_id, "member")
+                .await,
         )
         .await;
+    assert_eq!(demoted.status, StatusCode::NO_CONTENT, "{}", demoted.text());
+    let response = t.call(delete()).await;
     assert_eq!(
         response.status,
         StatusCode::NO_CONTENT,

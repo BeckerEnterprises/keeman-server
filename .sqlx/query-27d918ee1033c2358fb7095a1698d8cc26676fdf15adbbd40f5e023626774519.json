@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO users (id, email, kdf_params, kdf_salt, auth_hash, user_key_wrapped, public_key,\n            private_key_wrapped, signing_public_key, user_data, user_data_revision, recovery_auth_hash,\n            user_key_recovery_wrapped, created_at, updated_at)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 14
+    },
+    "nullable": []
+  },
+  "hash": "27d918ee1033c2358fb7095a1698d8cc26676fdf15adbbd40f5e023626774519"
+}

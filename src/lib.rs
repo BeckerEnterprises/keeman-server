@@ -23,5 +23,6 @@ pub mod logging;
 pub mod manifest_ids;
 pub mod quota;
 pub mod ratelimit;
+pub mod roles;
 pub mod storage;
 pub mod types;

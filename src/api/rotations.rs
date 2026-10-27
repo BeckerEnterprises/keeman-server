@@ -11,6 +11,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use time::Duration;
 
+use super::roles::{self, After, SignedRoles};
 use super::vaults::{MAX_OBJECTS, Need, path_uuid, precheck, require, vault_id};
 use crate::app::App;
 use crate::audit::Audit;
@@ -19,7 +20,7 @@ use crate::clock::format_timestamp;
 use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
-use crate::extract::{BODY_LIMIT, LARGE_BODY_LIMIT};
+use crate::extract::{BODY_LIMIT, LARGE_BODY_LIMIT, present};
 use crate::idempotency;
 use crate::manifest_ids::ManifestIds;
 use crate::quota;
@@ -76,6 +77,8 @@ pub struct CommitBody {
     invite_keys: Vec<MemberKey>,
     remove_user_ids: Vec<Uuid>,
     drop_objects: Vec<DroppedObject>,
+    #[serde(default, deserialize_with = "present")]
+    roles: Option<SignedRoles>,
 }
 
 fn ids_json(ids: &[&str]) -> ApiResult<String> {
@@ -478,6 +481,26 @@ async fn commit_in(
     {
         return Err(incomplete());
     }
+    // With a roles chain, the next statement commits to the new key and
+    // names the owners that remain.
+    let checked = if roles::has_chain(conn, vault_id).await? {
+        let signed = body
+            .roles
+            .as_ref()
+            .ok_or_else(|| ApiError::new(ErrorCode::RolesRequired))?;
+        let mut owners = db::roles::owner_keys(conn, vault_id).await?;
+        owners.retain(|o| !removed.contains(o.user_id.as_str()));
+        let after = After {
+            owners,
+            key_version: rotation.new_key_version,
+            new_key: true,
+        };
+        Some(roles::check(conn, vault_id, user_id, signed, &after).await?)
+    } else if body.roles.is_some() {
+        return Err(ApiError::pointer("/roles", "the vault has no roles chain"));
+    } else {
+        None
+    };
     // Drop tombstones replace the dropped objects; the excess of the uploads
     // was counted when they were staged.
     let growth: i64 = body
@@ -563,6 +586,9 @@ async fn commit_in(
     let uninvited =
         db::vaults::delete_invitations_except(conn, vault_id, &ids_json(&kept)?).await?;
     db::rotations::delete(conn, rotation_id).await?;
+    if let Some(checked) = &checked {
+        roles::store(conn, audit, vault_id, checked, now, ip_hint).await?;
+    }
     let mut removed_ids: Vec<&str> = removed.iter().copied().collect();
     removed_ids.sort_unstable();
     audit

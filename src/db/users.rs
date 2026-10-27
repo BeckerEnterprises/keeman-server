@@ -9,6 +9,7 @@ pub struct NewUser<'a> {
     pub user_key_wrapped: &'a [u8],
     pub public_key: &'a [u8],
     pub private_key_wrapped: &'a [u8],
+    pub signing_public_key: &'a [u8],
     pub user_data: &'a [u8],
     pub recovery_auth_hash: &'a str,
     pub user_key_recovery_wrapped: &'a [u8],
@@ -18,9 +19,9 @@ pub struct NewUser<'a> {
 pub async fn insert<'e>(ex: impl SqliteExecutor<'e>, u: &NewUser<'_>) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "INSERT INTO users (id, email, kdf_params, kdf_salt, auth_hash, user_key_wrapped, public_key,
-            private_key_wrapped, user_data, user_data_revision, recovery_auth_hash, user_key_recovery_wrapped,
-            created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)",
+            private_key_wrapped, signing_public_key, user_data, user_data_revision, recovery_auth_hash,
+            user_key_recovery_wrapped, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)",
         u.id,
         u.email,
         u.kdf_params,
@@ -29,6 +30,7 @@ pub async fn insert<'e>(ex: impl SqliteExecutor<'e>, u: &NewUser<'_>) -> Result<
         u.user_key_wrapped,
         u.public_key,
         u.private_key_wrapped,
+        u.signing_public_key,
         u.user_data,
         u.recovery_auth_hash,
         u.user_key_recovery_wrapped,
@@ -72,6 +74,7 @@ pub struct PublicUser {
     pub id: String,
     pub email: String,
     pub public_key: Vec<u8>,
+    pub signing_public_key: Option<Vec<u8>>,
 }
 
 pub async fn public_by_email<'e>(
@@ -80,7 +83,7 @@ pub async fn public_by_email<'e>(
 ) -> Result<Option<PublicUser>, sqlx::Error> {
     sqlx::query_as!(
         PublicUser,
-        r#"SELECT id AS "id!", email, public_key FROM users WHERE email = ?"#,
+        r#"SELECT id AS "id!", email, public_key, signing_public_key FROM users WHERE email = ?"#,
         email
     )
     .fetch_optional(ex)
@@ -93,7 +96,7 @@ pub async fn public_by_id<'e>(
 ) -> Result<Option<PublicUser>, sqlx::Error> {
     sqlx::query_as!(
         PublicUser,
-        r#"SELECT id AS "id!", email, public_key FROM users WHERE id = ?"#,
+        r#"SELECT id AS "id!", email, public_key, signing_public_key FROM users WHERE id = ?"#,
         id
     )
     .fetch_optional(ex)
@@ -294,6 +297,7 @@ pub struct MeRow {
     pub user_key_wrapped: Vec<u8>,
     pub public_key: Vec<u8>,
     pub private_key_wrapped: Vec<u8>,
+    pub signing_public_key: Option<Vec<u8>>,
     pub user_data: Vec<u8>,
     pub user_data_revision: i64,
     pub totp_enabled: bool,
@@ -306,7 +310,7 @@ pub async fn me<'e>(ex: impl SqliteExecutor<'e>, id: &str) -> Result<Option<MeRo
     sqlx::query_as!(
         MeRow,
         r#"SELECT id AS "id!", email, kdf_params, kdf_salt, user_key_wrapped, public_key, private_key_wrapped,
-             user_data, user_data_revision, totp_enabled AS "totp_enabled: bool",
+             signing_public_key, user_data, user_data_revision, totp_enabled AS "totp_enabled: bool",
              (SELECT COUNT(*) FROM webauthn_credentials w WHERE w.user_id = users.id) AS "webauthn_credentials!: i64",
              (SELECT COUNT(*) FROM backup_codes b WHERE b.user_id = users.id AND b.used_at IS NULL) AS "backup_codes_remaining!: i64",
              created_at
@@ -315,6 +319,35 @@ pub async fn me<'e>(ex: impl SqliteExecutor<'e>, id: &str) -> Result<Option<MeRo
     )
     .fetch_optional(ex)
     .await
+}
+
+/// The registered public signing key; the outer `None` for an unknown account.
+pub async fn signing_key<'e>(
+    ex: impl SqliteExecutor<'e>,
+    id: &str,
+) -> Result<Option<Option<Vec<u8>>>, sqlx::Error> {
+    sqlx::query_scalar!("SELECT signing_public_key FROM users WHERE id = ?", id)
+        .fetch_optional(ex)
+        .await
+}
+
+/// Sets the public signing key of an account that has none yet.
+pub async fn set_signing_key<'e>(
+    ex: impl SqliteExecutor<'e>,
+    id: &str,
+    key: &[u8],
+    now: &str,
+) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query!(
+        "UPDATE users SET signing_public_key = ?, updated_at = ?
+         WHERE id = ? AND signing_public_key IS NULL",
+        key,
+        now,
+        id
+    )
+    .execute(ex)
+    .await?;
+    Ok(result.rows_affected())
 }
 
 /// Conditional update; returns the number of updated rows.

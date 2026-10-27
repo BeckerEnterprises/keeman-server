@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT m.user_id AS \"user_id!\", u.public_key, u.signing_public_key\n           FROM memberships m JOIN users u ON u.id = m.user_id\n           WHERE m.vault_id = ? AND m.role = 'owner' AND m.state = 'active'\n           ORDER BY m.user_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "name": "public_key",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "public_key"
+          }
+        }
+      },
+      {
+        "name": "signing_public_key",
+        "ordinal": 2,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "signing_public_key"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "c41a5b70455b376717104fc0705556d736e80cc888b4c631ecc2f29eec02cfbd"
+}

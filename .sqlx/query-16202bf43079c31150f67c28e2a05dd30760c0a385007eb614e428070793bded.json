@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT 1 AS \"one!: i64\" FROM memberships m\n           WHERE m.user_id = ? AND m.role = 'owner' AND m.state = 'active'\n             AND EXISTS (SELECT 1 FROM vault_roles r WHERE r.vault_id = m.vault_id)\n             AND EXISTS (SELECT 1 FROM memberships o WHERE o.vault_id = m.vault_id\n                         AND o.user_id != m.user_id AND o.role = 'owner' AND o.state = 'active')\n           LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "one!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "16202bf43079c31150f67c28e2a05dd30760c0a385007eb614e428070793bded"
+}

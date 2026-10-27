@@ -196,6 +196,27 @@ impl<'de> Deserialize<'de> for KeyBox {
     }
 }
 
+/// Statement bytes of the roles chain as canonical Base64url of at most
+/// 65536 characters; the content is read by `roles`.
+#[derive(Debug, Clone)]
+pub struct StatementBytes(pub Vec<u8>);
+
+pub const STATEMENT_MAX_CHARS: usize = 65_536;
+
+impl<'de> Deserialize<'de> for StatementBytes {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserialize_str(deserializer, |s| {
+            if s.is_empty() || s.len() > STATEMENT_MAX_CHARS {
+                return Err(MSG_BASE64);
+            }
+            decode_base64url(s).map(Self).ok_or(MSG_BASE64)
+        })
+    }
+}
+
+/// Ed25519 signature.
+pub type Signature = B64<64>;
+
 /// Role of a member.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]

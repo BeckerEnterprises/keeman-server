@@ -9,6 +9,7 @@ pub mod meta;
 pub mod objects;
 pub mod passkeys;
 pub mod recovery;
+pub mod roles;
 pub mod rotations;
 pub mod second_factor;
 pub mod sessions;
