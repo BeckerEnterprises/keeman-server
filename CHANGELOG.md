@@ -6,7 +6,16 @@ All notable changes to this project are documented here. The format follows [Kee
 
 Upgrading: the migration `0005_manifest.sql` runs on start and rebuilds the `objects` table, which briefly needs about twice its size on disk; back up first. An older binary does not start with the migrated database. Web clients opened before the update stop syncing a vault once it has a manifest and their saves are refused with `422`; reloading the page fixes this.
 
+The migration `0006_roles.sql` adds the column `users.signing_public_key` and the table `vault_roles`; existing accounts keep working without a signing key until their client adds it. Web clients opened before the update cannot register (the signing key is required) or create vaults (the first roles statement is required), and once a vault has a roles chain their role changes and key rotations are refused with `422 roles_required`; reloading the page fixes this.
+
 ### Added
+
+- Signed roles: every account has a public Ed25519 signing key (`signing_public_key`, required at registration, reported by `GET /v1/me`, user lookup, `public-key` and the member list). Accounts from before add it once with `PUT /v1/me/signing-key` (needs reauth; the same key again is `204`, another one `409 conflict`; security log `signing_key_set`).
+- Each vault keeps an owner-signed roles chain in `vault_roles`: statements naming the owners with their keys and committing to the vault key of their key version. `POST /v1/vaults` requires the first statement; role changes (`PATCH …/members/{user_id}`) and rotation commits carry the next one once a chain exists, otherwise `422 roles_required`; `POST /v1/vaults/{id}/roles` adds the first statement of an older vault or one that only drops owners who are gone. `GET /v1/vaults/{id}/roles?since=` serves the chain to members and invitees, and the vault list reports `roles_version`.
+- Every new statement is checked in the writing transaction: canonical bytes, following the stored head (`409 roles_conflict` with `current_roles_version`), signed by the caller as an owner of the head (Ed25519 through `ring`, already in the tree through `rustls`), naming exactly the active owners afterwards with their registered keys, and the vault's key version. Promoting an account without a signing key gives `409 signing_key_missing`. Answers of the check are stored for the idempotency key. Security log `roles_changed`.
+- An owner of a vault with a roles chain demotes itself before leaving it or deleting the account, otherwise `409 owner_must_demote`.
+- `check` reports roles chains with gaps in their versions or statements that do not link to their predecessor.
+- `GET /v1/config` reports `features.roles`.
 
 - Object type `manifest` for the authenticated vault manifest that clients keep in every vault: an encrypted list of all live objects, so a server can no longer withhold or replay objects unnoticed. The server stores it like any other object and never reads it.
 - Manifest objects are allowed only under 65 IDs derived from the vault ID (BLAKE2b, crate `blake2`), and no other type may use these IDs; they can be neither deleted nor dropped in a key rotation (`400`).
