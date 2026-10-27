@@ -27,12 +27,68 @@ async fn me_returns_the_account_material() {
         assert_eq!(me[field].as_str().unwrap().len(), 98, "{field}");
     }
     assert_eq!(me["public_key"].as_str().unwrap().len(), 43);
+    assert_eq!(me["signing_public_key"], json!(alice.signing_public_key));
     assert_eq!(me["user_data"]["revision"], 1);
     assert_eq!(
         me["two_factor"],
         json!({ "totp": false, "webauthn_credentials": 0, "backup_codes_remaining": 0 })
     );
     assert_eq!(me["created"], "2026-10-23T08:00:00.000Z");
+}
+
+#[tokio::test]
+async fn an_older_account_adds_its_signing_key_once() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    t.sql(&format!(
+        "UPDATE users SET signing_public_key = NULL WHERE id = '{}'",
+        alice.user_id
+    ))
+    .await;
+    let me = t.call(Req::get("/v1/me").token(&alice.access_token)).await;
+    assert_eq!(me.json()["signing_public_key"], json!(null));
+    let put = |key: &str, reauth: Option<&str>| {
+        let request = Req::put("/v1/me/signing-key")
+            .token(&alice.access_token)
+            .json(&json!({ "signing_public_key": key }));
+        match reauth {
+            Some(token) => request.reauth(token),
+            None => request,
+        }
+    };
+    let key = alice.signing_public_key.clone();
+    assert_eq!(t.call(put(&key, None)).await.code(), "reauth_required");
+    let reauth = t.reauth(&alice).await;
+    let malformed = t.call(put("AAAA", Some(&reauth))).await;
+    assert_eq!(malformed.field_error().0, "/signing_public_key");
+    let set = t.call(put(&key, Some(&reauth))).await;
+    assert_eq!(set.status, StatusCode::NO_CONTENT, "{}", set.text());
+    // The same key again is a repetition; another one never replaces it.
+    assert_eq!(
+        t.call(put(&key, Some(&reauth))).await.status,
+        StatusCode::NO_CONTENT
+    );
+    let other = random_b64::<32>();
+    assert_eq!(t.call(put(&other, Some(&reauth))).await.code(), "conflict");
+    let me = t.call(Req::get("/v1/me").token(&alice.access_token)).await;
+    assert_eq!(me.json()["signing_public_key"], json!(key));
+    assert_eq!(
+        t.count("SELECT COUNT(*) FROM security_log WHERE event = 'signing_key_set'")
+            .await,
+        1
+    );
+    // Accounts that registered with a key cannot change it either.
+    let bob = t.register("bob@example.com").await;
+    let reauth = t.reauth(&bob).await;
+    let changed = t
+        .call(
+            Req::put("/v1/me/signing-key")
+                .token(&bob.access_token)
+                .reauth(&reauth)
+                .json(&json!({ "signing_public_key": other })),
+        )
+        .await;
+    assert_eq!(changed.code(), "conflict");
 }
 
 #[tokio::test]

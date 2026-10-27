@@ -1,0 +1,156 @@
+{
+  "vectors": "signing",
+  "format_version": 1,
+  "generator": "@keeman/core 0.1.1, libsodium-wrappers-sumo 0.8.4",
+  "cases": [
+    {
+      "id": "derive-alice",
+      "kind": "derive",
+      "user_key_hex": "328a63033e94269aa4d4e319298862b563ede98aeb205c21edfefa54774a11ae",
+      "expected": {
+        "seed_hex": "d437f9e3cbcfda1a895fd29882de2b004540353677df8818dca7218fbd6da073",
+        "public_key_hex": "0d04799fc954f3ac641d0400d277f5222ec4e5631cd10d87262a811b2bc339df"
+      }
+    },
+    {
+      "id": "derive-bob",
+      "kind": "derive",
+      "user_key_hex": "48620a82d7e9a5ce67b102612a212dca0109c4de8ab5f07033ec0b7253e1a4af",
+      "expected": {
+        "seed_hex": "386f33545718af8960c972b5fa3b96893a3000e127d5e987d464f3266aa93984",
+        "public_key_hex": "3036764bc22e13ca0f6a38c05922210dcc334faccfdbfc9bdf160fb3dd7797e5"
+      }
+    },
+    {
+      "id": "sign-empty",
+      "kind": "sign",
+      "seed_hex": "d437f9e3cbcfda1a895fd29882de2b004540353677df8818dca7218fbd6da073",
+      "public_key_hex": "0d04799fc954f3ac641d0400d277f5222ec4e5631cd10d87262a811b2bc339df",
+      "context": "keeman:v1:roles",
+      "message_hex": "",
+      "expected": {
+        "signed_hex": "6b65656d616e3a76313a726f6c657300",
+        "signature_hex": "4412f2a46917dd18a1a18c7d03a68433df7979707293616cf3520a365560c56edcf7eb5d360ff5db47d72b1d7579f6b2051ac19b25554ccbc7134ba94984fe00"
+      }
+    },
+    {
+      "id": "sign-short",
+      "kind": "sign",
+      "seed_hex": "d437f9e3cbcfda1a895fd29882de2b004540353677df8818dca7218fbd6da073",
+      "public_key_hex": "0d04799fc954f3ac641d0400d277f5222ec4e5631cd10d87262a811b2bc339df",
+      "context": "keeman:v1:roles",
+      "message_hex": "6b65656d616e",
+      "expected": {
+        "signed_hex": "6b65656d616e3a76313a726f6c6573006b65656d616e",
+        "signature_hex": "11d8348507aef99ac1626c1c33acfc418216c48a8c5129d5d4ae782c862b762fedf64b061fb0940eb1d22a2d8440052ea4dc0abb80c6a0b9e7078aea1ead1808"
+      }
+    },
+    {
+      "id": "sign-long",
+      "kind": "sign",
+      "seed_hex": "d437f9e3cbcfda1a895fd29882de2b004540353677df8818dca7218fbd6da073",
+      "public_key_hex": "0d04799fc954f3ac641d0400d277f5222ec4e5631cd10d87262a811b2bc339df",
+      "context": "keeman:v1:roles",
+      "message_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "expected": {
+        "signed_hex": "6b65656d616e3a76313a726f6c657300000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+        "signature_hex": "bd942eeff33102871ac8c6c08d2d06b9ca9258fc56d55a8497b67fb33f8b54d3ab4cd378e29d461c177c7bfb05c2fabce62b24b34e33adb429157bcb0bd2a904"
+      }
+    },
+    {
+      "id": "other-context",
+      "base": "sign-short",
+      "override": {
+        "context": "keeman:v1:other"
+      },
+      "expected": {
+        "error": "auth"
+      }
+    },
+    {
+      "id": "other-message",
+      "base": "sign-short",
+      "override": {
+        "message_hex": "6b65656d614e"
+      },
+      "expected": {
+        "error": "auth"
+      }
+    },
+    {
+      "id": "other-public-key",
+      "base": "sign-short",
+      "override": {
+        "public_key_hex": "3036764bc22e13ca0f6a38c05922210dcc334faccfdbfc9bdf160fb3dd7797e5"
+      },
+      "expected": {
+        "error": "auth"
+      }
+    },
+    {
+      "id": "flipped-r",
+      "base": "sign-short",
+      "mutations": [
+        {
+          "op": "xor",
+          "offset": 3,
+          "value": 1
+        }
+      ],
+      "expected": {
+        "error": "auth"
+      }
+    },
+    {
+      "id": "flipped-s",
+      "base": "sign-short",
+      "mutations": [
+        {
+          "op": "xor",
+          "offset": 40,
+          "value": 1
+        }
+      ],
+      "expected": {
+        "error": "auth"
+      }
+    },
+    {
+      "id": "s-not-canonical",
+      "base": "sign-short",
+      "mutations": [
+        {
+          "op": "replace",
+          "offset": 32,
+          "hex": "daca41633913a766876f22d0623ae442a4dc0abb80c6a0b9e7078aea1ead1818"
+        }
+      ],
+      "expected": {
+        "error": "auth"
+      }
+    },
+    {
+      "id": "truncated",
+      "base": "sign-short",
+      "mutations": [
+        {
+          "op": "truncate",
+          "length": 63
+        }
+      ],
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "id": "public-key-31-bytes",
+      "base": "sign-short",
+      "override": {
+        "public_key_hex": "0d04799fc954f3ac641d0400d277f5222ec4e5631cd10d87262a811b2bc339"
+      },
+      "expected": {
+        "error": "format"
+      }
+    }
+  ]
+}

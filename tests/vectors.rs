@@ -1,11 +1,16 @@
 //! The shared test vectors that apply to the server: strict Base64url, UUID
-//! format, the KDF parameter range, TOTP and the fixed manifest IDs. Clients
-//! pass the same vectors.
+//! format, the KDF parameter range, TOTP, the fixed manifest IDs, signatures
+//! and the statements of the roles chain. Clients pass the same vectors.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use blake2::digest::consts::U32;
+use blake2::digest::{Digest, Mac};
+use blake2::{Blake2b, Blake2bMac};
 use keeman_server::extract::parse_json;
 use keeman_server::manifest_ids::{SHARDS, root_id, shard_id};
+use keeman_server::roles;
 use keeman_server::types::{B64, KdfParamsInput, decode_base64url, is_canonical_uuid};
+use ring::signature::{ED25519, Ed25519KeyPair, KeyPair, UnparsedPublicKey};
 use serde_json::Value;
 
 fn cases(file: &str) -> Vec<Value> {
@@ -20,6 +25,60 @@ fn cases(file: &str) -> Vec<Value> {
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn unhex(text: &str) -> Vec<u8> {
+    (0..text.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&text[i..i + 2], 16).unwrap())
+        .collect()
+}
+
+/// A case with its `base` merged in (`override` replaces top-level fields).
+fn resolved(case: &Value, all: &[Value]) -> Value {
+    let Some(base) = case["base"].as_str() else {
+        return case.clone();
+    };
+    let mut merged = all.iter().find(|c| c["id"] == base).unwrap().clone();
+    if let Some(fields) = case["override"].as_object() {
+        for (key, value) in fields {
+            merged[key] = value.clone();
+        }
+    }
+    merged
+}
+
+/// The mutations of the vector format that the signing cases use.
+fn mutate(mut bytes: Vec<u8>, mutations: &Value) -> Vec<u8> {
+    for m in mutations.as_array().into_iter().flatten() {
+        let offset = m["offset"].as_u64().map(|o| usize::try_from(o).unwrap());
+        match m["op"].as_str().unwrap() {
+            "xor" => bytes[offset.unwrap()] ^= u8::try_from(m["value"].as_u64().unwrap()).unwrap(),
+            "replace" => {
+                let with = unhex(m["hex"].as_str().unwrap());
+                let start = offset.unwrap();
+                bytes[start..start + with.len()].copy_from_slice(&with);
+            }
+            "truncate" => bytes.truncate(usize::try_from(m["length"].as_u64().unwrap()).unwrap()),
+            other => panic!("unknown mutation {other}"),
+        }
+    }
+    bytes
+}
+
+/// `crypto_kdf_derive_from_key(32, id, ctx, key)`: keyed BLAKE2b-256 with
+/// salt LE64(id) ‖ 0⁸ and personal ctx ‖ 0⁸.
+fn kdf(key: &[u8], id: u64, context: &str) -> [u8; 32] {
+    let mut salt = id.to_le_bytes().to_vec();
+    salt.extend([0; 8]);
+    let mut personal = context.as_bytes().to_vec();
+    personal.extend([0; 8]);
+    let mac = Blake2bMac::<U32>::new_with_salt_and_personal(Some(key), &salt, &personal).unwrap();
+    mac.finalize().into_bytes().into()
+}
+
+fn signing_seed(user_key_hex: &str) -> [u8; 32] {
+    kdf(&unhex(user_key_hex), 1, "keemanSG")
 }
 
 #[test]
@@ -129,4 +188,162 @@ fn manifest_id_vectors() {
     for (k, expected) in shards.iter().enumerate() {
         assert_eq!(expected, &shard_id(vault, k), "shard {k}");
     }
+}
+
+#[test]
+fn signing_vectors() {
+    let all = cases("signing.json");
+    let mut verified = 0;
+    for case in &all {
+        let id = case["id"].as_str().unwrap();
+        if case["kind"] == "derive" {
+            let seed = signing_seed(case["user_key_hex"].as_str().unwrap());
+            assert_eq!(hex(&seed), case["expected"]["seed_hex"], "{id}");
+            let pair = Ed25519KeyPair::from_seed_unchecked(&seed).unwrap();
+            assert_eq!(
+                hex(pair.public_key().as_ref()),
+                case["expected"]["public_key_hex"],
+                "{id}"
+            );
+            continue;
+        }
+        let effective = resolved(case, &all);
+        let context = effective["context"].as_str().unwrap();
+        let message = unhex(effective["message_hex"].as_str().unwrap());
+        let mut signed = context.as_bytes().to_vec();
+        signed.push(0);
+        signed.extend_from_slice(&message);
+        let signature = if case.get("base").is_none() {
+            assert_eq!(hex(&signed), case["expected"]["signed_hex"], "{id}");
+            let seed = unhex(case["seed_hex"].as_str().unwrap());
+            let pair = Ed25519KeyPair::from_seed_unchecked(&seed).unwrap();
+            let signature = pair.sign(&signed).as_ref().to_vec();
+            assert_eq!(hex(&signature), case["expected"]["signature_hex"], "{id}");
+            signature
+        } else {
+            let base = all.iter().find(|c| c["id"] == case["base"]).unwrap();
+            mutate(
+                unhex(base["expected"]["signature_hex"].as_str().unwrap()),
+                &case["mutations"],
+            )
+        };
+        let public_key = unhex(effective["public_key_hex"].as_str().unwrap());
+        let valid = public_key.len() == 32
+            && signature.len() == 64
+            && UnparsedPublicKey::new(&ED25519, &public_key)
+                .verify(&signed, &signature)
+                .is_ok();
+        assert_eq!(valid, case["expected"].get("error").is_none(), "{id}");
+        // The server's own check, where the context is the roles chain's.
+        if context == roles::SIGNATURE_CONTEXT
+            && let (Ok(key), Ok(sig)) = (
+                <[u8; 32]>::try_from(public_key.as_slice()),
+                <[u8; 64]>::try_from(signature.as_slice()),
+            )
+        {
+            assert_eq!(roles::verify(&key, &message, &sig), valid, "{id}");
+        }
+        verified += 1;
+    }
+    assert_eq!(verified, 11);
+}
+
+fn key32(value: &Value) -> [u8; 32] {
+    decode_base64url(value.as_str().unwrap())
+        .unwrap()
+        .try_into()
+        .unwrap()
+}
+
+/// A statement in the field names of the API.
+fn statement_of(wire: &Value) -> roles::Statement {
+    roles::Statement {
+        vault_id: wire["vault_id"].as_str().unwrap().into(),
+        version: wire["version"].as_i64().unwrap(),
+        previous: wire["previous"].as_str().map(|_| key32(&wire["previous"])),
+        key_version: wire["key_version"].as_i64().unwrap(),
+        key_commitment: key32(&wire["key_commitment"]),
+        owners: wire["owners"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|o| roles::Owner {
+                user_id: o["user_id"].as_str().unwrap().into(),
+                public_key: key32(&o["public_key"]),
+                signing_key: key32(&o["signing_key"]),
+            })
+            .collect(),
+        signer: wire["signer"].as_str().unwrap().into(),
+        created: wire["created"].as_str().unwrap().into(),
+    }
+}
+
+#[test]
+fn roles_vectors() {
+    let mut checked = 0;
+    for case in cases("roles.json") {
+        let id = case["id"].as_str().unwrap();
+        let expected = &case["expected"];
+        match case["kind"].as_str().unwrap() {
+            "commitment" => {
+                let prefix = format!(
+                    "keeman:v1:key-commitment:{}:{}\0",
+                    case["vault_id"].as_str().unwrap(),
+                    case["key_version"]
+                );
+                let mut input = prefix.into_bytes();
+                input.extend(unhex(case["vault_key_hex"].as_str().unwrap()));
+                let digest: [u8; 32] = Blake2b::<U32>::digest(&input).into();
+                assert_eq!(
+                    keeman_server::types::encode_base64url(&digest),
+                    expected["commitment"],
+                    "{id}"
+                );
+            }
+            "statement" => {
+                let statement = statement_of(&case["statement"]);
+                let bytes = roles::encode(&statement);
+                assert_eq!(
+                    keeman_server::types::encode_base64url(&bytes),
+                    expected["statement"],
+                    "{id}"
+                );
+                assert_eq!(
+                    keeman_server::types::encode_base64url(&roles::hash(&bytes)),
+                    expected["hash"],
+                    "{id}"
+                );
+                assert_eq!(roles::parse(&bytes), Some(statement.clone()), "{id}");
+                let seed = signing_seed(case["signer_user_key_hex"].as_str().unwrap());
+                let pair = Ed25519KeyPair::from_seed_unchecked(&seed).unwrap();
+                let mut signed = roles::SIGNATURE_CONTEXT.as_bytes().to_vec();
+                signed.push(0);
+                signed.extend_from_slice(&bytes);
+                assert_eq!(
+                    keeman_server::types::encode_base64url(pair.sign(&signed).as_ref()),
+                    expected["signature"],
+                    "{id}"
+                );
+                let signature: [u8; 64] = decode_base64url(expected["signature"].as_str().unwrap())
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                let key: [u8; 32] = pair.public_key().as_ref().try_into().unwrap();
+                assert!(roles::verify(&key, &bytes, &signature), "{id}");
+            }
+            "decode" => {
+                let bytes = decode_base64url(case["statement_b64"].as_str().unwrap()).unwrap();
+                let parsed = roles::parse(&bytes);
+                match expected.get("statement") {
+                    Some(wire) => assert_eq!(parsed, Some(statement_of(wire)), "{id}"),
+                    None => assert_eq!(parsed, None, "{id}"),
+                }
+            }
+            // Chain and grant checks are the clients' part.
+            "chain" | "grant" => continue,
+            other => panic!("{id}: unknown kind {other}"),
+        }
+        checked += 1;
+    }
+    assert_eq!(checked, 28);
 }

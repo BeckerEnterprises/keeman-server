@@ -613,6 +613,32 @@ async fn check_reports_every_problem_and_changes_nothing() {
     )
     .unwrap();
 
+    // A roles chain with a gap and an unreadable statement; one whose second
+    // statement does not link to the first.
+    s.t.sql(&format!(
+        "INSERT INTO vault_roles (vault_id, version, statement, signature, hash, created_at)
+         VALUES ('{}', 3, x'7b7d', x'00', x'00', '2026-10-23T08:00:00.000Z')",
+        s.vault
+    ))
+    .await;
+    let promoted =
+        s.t.call(
+            s.t.role_change(&s.alice, &s.shared, &s.bob.user_id, "owner")
+                .await,
+        )
+        .await;
+    assert_eq!(
+        promoted.status,
+        StatusCode::NO_CONTENT,
+        "{}",
+        promoted.text()
+    );
+    s.t.sql(&format!(
+        "UPDATE vault_roles SET hash = x'00' WHERE vault_id = '{}' AND version = 1",
+        s.shared
+    ))
+    .await;
+
     let output = run(s.dir.path(), &["check"]);
     assert!(!output.status.success());
     let report = stdout(&output);
@@ -621,11 +647,24 @@ async fn check_reports_every_problem_and_changes_nothing() {
         format!("attachment {} is complete but has no file", s.large),
         format!("{orphan}.bin belongs to no complete attachment"),
         format!("uploads/{stray} belongs to no upload in progress"),
+        format!("roles chain of vault {}: version 3 follows 1", s.vault),
+        format!(
+            "roles chain of vault {}: statement 3 is unreadable",
+            s.vault
+        ),
+        format!(
+            "roles chain of vault {}: statement 1 does not link to its predecessor",
+            s.shared
+        ),
+        format!(
+            "roles chain of vault {}: statement 2 does not link to its predecessor",
+            s.shared
+        ),
     ] {
         assert!(report.contains(&expected), "{expected}\n{report}");
     }
     assert!(
-        stderr(&output).contains("4 problem(s) found"),
+        stderr(&output).contains("8 problem(s) found"),
         "{}",
         stderr(&output)
     );

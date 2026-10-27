@@ -60,6 +60,10 @@ async fn invitations_appear_in_the_vault_and_member_lists() {
     assert_eq!(rows[0]["state"], "active");
     assert_eq!(rows[0]["invited_by"], json!(null));
     assert_eq!(rows[0]["public_key"], json!(alice.public_key));
+    assert_eq!(
+        rows[0]["signing_public_key"],
+        json!(alice.signing_public_key)
+    );
     assert_eq!(rows[1]["user_id"], json!(bob.user_id));
     assert_eq!(rows[1]["email"], "bob@example.com");
     assert_eq!(rows[1]["state"], "pending");

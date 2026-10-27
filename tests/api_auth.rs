@@ -345,6 +345,25 @@ async fn register_validation() {
         register_raw(&t, &body).await.field_error(),
         ("/recovery".into(), "missing field".into())
     );
+    // The signing key is part of every new account.
+    let mut body = base.clone();
+    body.as_object_mut().unwrap().remove("signing_public_key");
+    assert_eq!(
+        register_raw(&t, &body).await.field_error(),
+        ("/signing_public_key".into(), "missing field".into())
+    );
+    let mut body = base.clone();
+    body["signing_public_key"] = json!(null);
+    assert_eq!(
+        register_raw(&t, &body).await.status,
+        StatusCode::BAD_REQUEST
+    );
+    let mut body = base.clone();
+    body["signing_public_key"] = json!(encode_base64url(&[1u8; 31]));
+    assert_eq!(
+        register_raw(&t, &body).await.field_error().0,
+        "/signing_public_key"
+    );
 
     // Envelope fields over their byte limit → 413.
     let mut body = base.clone();
