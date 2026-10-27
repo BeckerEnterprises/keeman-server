@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO vault_freshness (user_id, vault_id, statement, signature, updated_at)\n         VALUES (?, ?, ?, ?, ?)\n         ON CONFLICT (user_id, vault_id) DO UPDATE SET\n           statement = excluded.statement, signature = excluded.signature,\n           updated_at = excluded.updated_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "b15a5c2c4b65fbab822e9196a557cfe175519239b357e441d9424f21e8735166"
+}

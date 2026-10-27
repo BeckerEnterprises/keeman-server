@@ -16,6 +16,7 @@ pub mod error;
 pub mod events;
 pub mod extract;
 pub mod favicon;
+pub mod freshness;
 pub mod idempotency;
 pub mod inflight;
 pub mod jobs;

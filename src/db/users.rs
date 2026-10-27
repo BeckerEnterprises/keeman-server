@@ -303,6 +303,9 @@ pub struct MeRow {
     pub totp_enabled: bool,
     pub webauthn_credentials: i64,
     pub backup_codes_remaining: i64,
+    /// The account's freshness attestation for its user data.
+    pub freshness_statement: Option<Vec<u8>>,
+    pub freshness_signature: Option<Vec<u8>>,
     pub created_at: String,
 }
 
@@ -313,8 +316,9 @@ pub async fn me<'e>(ex: impl SqliteExecutor<'e>, id: &str) -> Result<Option<MeRo
              signing_public_key, user_data, user_data_revision, totp_enabled AS "totp_enabled: bool",
              (SELECT COUNT(*) FROM webauthn_credentials w WHERE w.user_id = users.id) AS "webauthn_credentials!: i64",
              (SELECT COUNT(*) FROM backup_codes b WHERE b.user_id = users.id AND b.used_at IS NULL) AS "backup_codes_remaining!: i64",
-             created_at
-           FROM users WHERE id = ?"#,
+             f.statement AS "freshness_statement?", f.signature AS "freshness_signature?",
+             users.created_at
+           FROM users LEFT JOIN user_freshness f ON f.user_id = users.id WHERE users.id = ?"#,
         id
     )
     .fetch_optional(ex)

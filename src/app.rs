@@ -212,6 +212,13 @@ pub fn router(app: Arc<App>) -> Router {
         .route("/v1/me/password", put(api::me::put_password))
         .route("/v1/me/recovery", put(api::me::put_recovery))
         .route("/v1/me/signing-key", put(api::me::put_signing_key))
+        .route("/v1/me/freshness", put(api::freshness::put_user_data))
+        .route(
+            "/v1/me/pairing",
+            put(api::pairing::put)
+                .get(api::pairing::get)
+                .delete(api::pairing::delete),
+        )
         .route("/v1/me/totp/setup", post(api::two_factor::totp_setup))
         .route("/v1/me/totp/enable", post(api::two_factor::totp_enable))
         .route("/v1/me/totp", delete(api::two_factor::totp_disable))
@@ -270,6 +277,10 @@ pub fn router(app: Arc<App>) -> Router {
         .route(
             "/v1/vaults/{vault_id}/roles",
             get(api::roles::get).post(api::roles::append),
+        )
+        .route(
+            "/v1/vaults/{vault_id}/freshness",
+            put(api::freshness::put_vault),
         )
         .route(
             "/v1/vaults/{vault_id}/rotations",

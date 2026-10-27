@@ -217,6 +217,46 @@ impl<'de> Deserialize<'de> for StatementBytes {
 /// Ed25519 signature.
 pub type Signature = B64<64>;
 
+/// Statement bytes of a freshness attestation as canonical Base64url of at
+/// most 4096 characters; the content is read by `freshness`.
+#[derive(Debug, Clone)]
+pub struct FreshnessBytes(pub Vec<u8>);
+
+pub const FRESHNESS_MAX_CHARS: usize = 4096;
+
+impl<'de> Deserialize<'de> for FreshnessBytes {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserialize_str(deserializer, |s| {
+            if s.is_empty() || s.len() > FRESHNESS_MAX_CHARS {
+                return Err(MSG_BASE64);
+            }
+            decode_base64url(s).map(Self).ok_or(MSG_BASE64)
+        })
+    }
+}
+
+/// Pairing data: AEAD envelope of at most 1 MiB as text (`413` above),
+/// format byte `0x01`, at least 41 bytes.
+#[derive(Debug, Clone)]
+pub struct PairingEnvelope(pub Vec<u8>);
+
+pub const PAIRING_MAX_CHARS: usize = 1_048_576;
+
+impl<'de> Deserialize<'de> for PairingEnvelope {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserialize_str(deserializer, |s| {
+            if s.len() > PAIRING_MAX_CHARS {
+                return Err(TOO_LARGE);
+            }
+            match decode_base64url(s) {
+                Some(bytes) if bytes.len() >= 41 && bytes[0] == 0x01 => Ok(Self(bytes)),
+                Some(_) => Err(MSG_ENVELOPE),
+                None => Err(MSG_BASE64),
+            }
+        })
+    }
+}
+
 /// Role of a member.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]

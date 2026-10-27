@@ -43,17 +43,17 @@ impl Statement {
     }
 }
 
-fn count(value: &Value) -> Option<i64> {
+pub(crate) fn count(value: &Value) -> Option<i64> {
     value
         .as_i64()
         .filter(|v| (1..=MAX_SAFE_INTEGER).contains(v))
 }
 
-fn key32(value: &Value) -> Option<[u8; 32]> {
+pub(crate) fn key32(value: &Value) -> Option<[u8; 32]> {
     decode_base64url(value.as_str()?)?.try_into().ok()
 }
 
-fn uuid(value: &Value) -> Option<String> {
+pub(crate) fn uuid(value: &Value) -> Option<String> {
     value
         .as_str()
         .filter(|s| is_canonical_uuid(s))
@@ -61,7 +61,7 @@ fn uuid(value: &Value) -> Option<String> {
 }
 
 /// ISO 8601 UTC with milliseconds, e.g. `2026-10-23T08:42:00.000Z`.
-fn is_timestamp(text: &str) -> bool {
+pub(crate) fn is_timestamp(text: &str) -> bool {
     let b = text.as_bytes();
     b.len() == 24
         && b.iter().enumerate().all(|(i, c)| match i {
@@ -169,10 +169,20 @@ pub fn hash(bytes: &[u8]) -> [u8; 32] {
     Blake2b::<U32>::digest(with_context(HASH_CONTEXT, bytes)).into()
 }
 
-/// The Ed25519 signature of `signing_key` over the context and the bytes.
+/// The Ed25519 signature of `signing_key` over the roles context and the bytes.
 pub fn verify(signing_key: &[u8; 32], bytes: &[u8], signature: &[u8; 64]) -> bool {
+    verify_in(SIGNATURE_CONTEXT, signing_key, bytes, signature)
+}
+
+/// The Ed25519 signature of `signing_key` over `context ‖ 0x00 ‖ bytes`.
+pub fn verify_in(
+    context: &str,
+    signing_key: &[u8; 32],
+    bytes: &[u8],
+    signature: &[u8; 64],
+) -> bool {
     UnparsedPublicKey::new(&ED25519, signing_key)
-        .verify(&with_context(SIGNATURE_CONTEXT, bytes), signature)
+        .verify(&with_context(context, bytes), signature)
         .is_ok()
 }
 

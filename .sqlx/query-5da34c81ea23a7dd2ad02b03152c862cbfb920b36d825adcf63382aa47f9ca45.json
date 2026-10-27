@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO user_freshness (user_id, statement, signature, updated_at)\n         VALUES (?, ?, ?, ?)\n         ON CONFLICT (user_id) DO UPDATE SET\n           statement = excluded.statement, signature = excluded.signature,\n           updated_at = excluded.updated_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "5da34c81ea23a7dd2ad02b03152c862cbfb920b36d825adcf63382aa47f9ca45"
+}

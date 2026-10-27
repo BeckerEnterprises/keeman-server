@@ -109,6 +109,9 @@ pub struct Listed {
     pub revision: i64,
     pub rotation_required: bool,
     pub roles_version: Option<i64>,
+    /// The caller's own freshness attestation for the vault.
+    pub freshness_statement: Option<Vec<u8>>,
+    pub freshness_signature: Option<Vec<u8>>,
     pub member_count: i64,
     pub created_at: String,
 }
@@ -124,9 +127,11 @@ pub async fn list_for_user<'e>(
              m.pending_key_box, m.pending_key_version, m.pending_key_sender_id, v.revision,
              v.rotation_required AS "rotation_required: bool",
              (SELECT MAX(r.version) FROM vault_roles r WHERE r.vault_id = v.id) AS "roles_version: i64",
+             f.statement AS "freshness_statement?", f.signature AS "freshness_signature?",
              (SELECT COUNT(*) FROM memberships c WHERE c.vault_id = v.id AND c.state = 'active') AS "member_count!: i64",
              v.created_at
            FROM memberships m JOIN vaults v ON v.id = m.vault_id
+             LEFT JOIN vault_freshness f ON f.vault_id = v.id AND f.user_id = m.user_id
            WHERE m.user_id = ?
            ORDER BY v.created_at, v.id"#,
         user_id
@@ -370,6 +375,8 @@ pub async fn accept_pending_key(
     Ok(())
 }
 
+/// Ends a membership; the member's freshness attestation for the vault goes
+/// with it.
 pub async fn delete_membership(
     conn: &mut Conn,
     vault_id: &str,
@@ -377,6 +384,13 @@ pub async fn delete_membership(
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "DELETE FROM memberships WHERE vault_id = ? AND user_id = ?",
+        vault_id,
+        user_id
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query!(
+        "DELETE FROM vault_freshness WHERE vault_id = ? AND user_id = ?",
         vault_id,
         user_id
     )

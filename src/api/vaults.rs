@@ -156,6 +156,13 @@ pub async fn list(
                 "revision": v.revision,
                 "rotation_required": v.rotation_required,
                 "roles_version": v.roles_version,
+                "freshness": match (v.freshness_statement, v.freshness_signature) {
+                    (Some(statement), Some(signature)) => json!({
+                        "statement": encode_base64url(&statement),
+                        "signature": encode_base64url(&signature),
+                    }),
+                    _ => Value::Null,
+                },
                 "member_count": v.member_count,
                 "created": v.created_at,
             })

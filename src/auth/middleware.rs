@@ -72,10 +72,11 @@ async fn prepare(app: &App, request: &mut Request) -> ApiResult<()> {
     }
     let session = authenticate(app, request.headers(), ClientIp(ip)).await?;
     // Endpoints with their own limit do not count against the session limit.
-    if !matches!(
+    let own_limit = matches!(
         path.as_str(),
         "/v1/me/reauth" | "/v1/users/lookup" | "/v1/favicon"
-    ) {
+    ) || (*request.method() == Method::PUT && path == "/v1/me/pairing");
+    if !own_limit {
         // Per session and per account at once: new sessions do not raise the limit.
         let limits = &app.config.rate_limits;
         app.limiter

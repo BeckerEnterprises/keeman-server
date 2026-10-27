@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT statement, signature FROM user_freshness WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "statement",
+        "ordinal": 0,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "user_freshness",
+            "name": "statement"
+          }
+        }
+      },
+      {
+        "name": "signature",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "user_freshness",
+            "name": "signature"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c97bbea37fe3fda2e338c909bb280818715a48c79d9f9bcd20366a7f14b79beb"
+}

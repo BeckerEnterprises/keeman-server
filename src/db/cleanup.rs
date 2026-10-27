@@ -26,6 +26,8 @@ pub struct Removed {
     pub security_log: u64,
     pub idempotency: u64,
     pub rotations: u64,
+    /// Pairings whose time ran out.
+    pub pairings: u64,
     /// Pending invitations whose time ran out.
     pub invitations: u64,
     pub tombstones: u64,
@@ -86,6 +88,10 @@ pub async fn run(conn: &mut Conn, c: &Cutoffs<'_>) -> Result<Removed, sqlx::Erro
         .execute(&mut *conn)
         .await?
         .rows_affected();
+    let pairings = sqlx::query!("DELETE FROM pairings WHERE expires_at <= ?", c.now)
+        .execute(&mut *conn)
+        .await?
+        .rows_affected();
     Ok(Removed {
         access_tokens,
         sessions,
@@ -96,6 +102,7 @@ pub async fn run(conn: &mut Conn, c: &Cutoffs<'_>) -> Result<Removed, sqlx::Erro
         security_log,
         idempotency,
         rotations,
+        pairings,
         invitations: 0,
         tombstones: 0,
         attachments: 0,

@@ -51,6 +51,13 @@ pub async fn get(
             "webauthn_credentials": me.webauthn_credentials,
             "backup_codes_remaining": me.backup_codes_remaining,
         },
+        "freshness": match (me.freshness_statement, me.freshness_signature) {
+            (Some(statement), Some(signature)) => json!({
+                "statement": encode_base64url(&statement),
+                "signature": encode_base64url(&signature),
+            }),
+            _ => Value::Null,
+        },
         "created": me.created_at,
     })))
 }

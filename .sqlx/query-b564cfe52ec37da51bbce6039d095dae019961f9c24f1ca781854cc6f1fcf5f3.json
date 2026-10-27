@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM vault_freshness WHERE vault_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b564cfe52ec37da51bbce6039d095dae019961f9c24f1ca781854cc6f1fcf5f3"
+}
