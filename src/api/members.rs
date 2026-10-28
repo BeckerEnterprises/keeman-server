@@ -109,6 +109,7 @@ pub async fn invite(
     let now = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
     require(&mut tx, vault_id, user_id, Need::Owner).await?;
+    super::rotations::not_being_removed(&mut tx, vault_id, user_id, &now).await?;
     // Before the lookup, so the limits also bound probing for accounts.
     let limits = &app.config.rate_limits;
     app.limit_all(&[
@@ -278,7 +279,12 @@ pub async fn update(
     let now = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
     require(&mut tx, vault_id, user_id, Need::Owner).await?;
-    super::rotations::not_being_removed(&mut tx, vault_id, user_id, &now).await?;
+    // Stepping down oneself stays possible: leaving and deleting the
+    // account need it, and a co-owner could otherwise hold them off for
+    // good by opening one rotation after the other.
+    if !(target == user_id && body.role == Role::Member) {
+        super::rotations::not_being_removed(&mut tx, vault_id, user_id, &now).await?;
+    }
     let membership = db::vaults::membership(&mut tx, vault_id, target)
         .await?
         .filter(|m| m.state == "active")
@@ -358,6 +364,9 @@ pub async fn withdraw(
     let now = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
     require(&mut tx, vault_id, user_id, Need::Owner).await?;
+    // A withdrawn invitation the rotation boxes a key for would make its
+    // commit fail.
+    super::rotations::not_being_removed(&mut tx, vault_id, user_id, &now).await?;
     let membership = db::vaults::membership(&mut tx, vault_id, target)
         .await?
         .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;

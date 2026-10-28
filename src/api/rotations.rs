@@ -188,11 +188,13 @@ fn check_open(user_id: &str, body: &OpenBody) -> ApiResult<()> {
 
 async fn open_in(
     conn: &mut Conn,
-    user_id: &str,
+    audit: &Audit,
+    who: (&str, &str),
     vault_id: &str,
     body: &OpenBody,
     times: (&str, &str),
 ) -> ApiResult<((), StatusCode, Value)> {
+    let (user_id, ip_hint) = who;
     let (now, expires_at) = times;
     require(conn, vault_id, user_id, Need::Owner).await?;
     not_being_removed(conn, vault_id, user_id, now).await?;
@@ -219,6 +221,18 @@ async fn open_in(
         remove_user_ids: ids_json(&removed)?,
     };
     db::rotations::replace(conn, &rotation).await?;
+    // An open rotation keeps the accounts it names from writing: on record.
+    audit
+        .vault_log(
+            conn,
+            now,
+            "rotation_opened",
+            user_id,
+            vault_id,
+            Some(ip_hint),
+            json!({ "key_version": body.new_key_version.0, "removed": removed }),
+        )
+        .await?;
     let expires_in = LIFETIME.whole_seconds();
     Ok((
         (),
@@ -232,6 +246,7 @@ async fn open_in(
 pub async fn open(
     State(app): State<Arc<App>>,
     session: AuthSession,
+    ip: ClientIp,
     _: NoQuery,
     Path(path): Path<String>,
     request: Request,
@@ -242,8 +257,19 @@ pub async fn open(
     check_open(user_id, &body)?;
     let now = format_timestamp(app.now());
     let expires_at = format_timestamp(app.now() + LIFETIME);
-    let work =
-        async |conn: &mut Conn| open_in(conn, user_id, &vault_id, &body, (&now, &expires_at)).await;
+    let ip_hint = ip.hint();
+    let audit = &app.audit;
+    let work = async |conn: &mut Conn| {
+        open_in(
+            conn,
+            audit,
+            (user_id, &ip_hint),
+            &vault_id,
+            &body,
+            (&now, &expires_at),
+        )
+        .await
+    };
     let (response, _) = idempotent(&app, user_id, &request, &now, work, nothing).await?;
     Ok(response)
 }

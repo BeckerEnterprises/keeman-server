@@ -933,3 +933,56 @@ async fn a_co_owner_being_removed_cannot_interfere() {
         .await;
     assert_eq!(done.status, StatusCode::OK, "{}", done.text());
 }
+
+#[tokio::test]
+async fn a_co_owner_being_removed_can_still_step_down_and_leave() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let dave = t.register("dave@example.com").await;
+    let erin = t.register("erin@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    t.share(&alice, &vault_id, &bob).await;
+    let promoted = t
+        .call(
+            t.role_change(&alice, &vault_id, &bob.user_id, "owner")
+                .await,
+        )
+        .await;
+    assert_eq!(
+        promoted.status,
+        StatusCode::NO_CONTENT,
+        "{}",
+        promoted.text()
+    );
+    let invited = t.invite_member(&alice, &vault_id, &erin).await;
+    assert_eq!(invited.status, StatusCode::CREATED, "{}", invited.text());
+    opened_removing(&t, &alice, &vault_id, &[&bob]).await;
+    // Opening it is on record, with the account it is to remove.
+    let detail: String =
+        sqlx::query_scalar("SELECT detail FROM security_log WHERE event = 'rotation_opened'")
+            .fetch_one(&t.app.db.read)
+            .await
+            .unwrap();
+    assert!(detail.contains(&bob.user_id), "{detail}");
+
+    // Bob neither invites nor withdraws the invitation the rotation boxes.
+    let invite = t.invite_member(&bob, &vault_id, &dave).await;
+    assert_eq!(invite.code(), "rotation_in_progress");
+    let withdraw = t
+        .call(
+            Req::delete(&format!("/v1/vaults/{vault_id}/members/{}", erin.user_id))
+                .token(&bob.access_token),
+        )
+        .await;
+    assert_eq!(withdraw.code(), "rotation_in_progress");
+    // But he can step down and leave: another owner cannot hold that off.
+    let down = t
+        .call(t.role_change(&bob, &vault_id, &bob.user_id, "member").await)
+        .await;
+    assert_eq!(down.status, StatusCode::NO_CONTENT, "{}", down.text());
+    let left = t
+        .call(Req::delete(&format!("/v1/vaults/{vault_id}/members/me")).token(&bob.access_token))
+        .await;
+    assert_eq!(left.status, StatusCode::NO_CONTENT, "{}", left.text());
+}
