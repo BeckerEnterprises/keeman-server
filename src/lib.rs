@@ -10,6 +10,7 @@ pub mod cli;
 pub mod client_ip;
 pub mod clock;
 pub mod config;
+pub mod confirmation;
 pub mod crypto;
 pub mod db;
 pub mod error;
