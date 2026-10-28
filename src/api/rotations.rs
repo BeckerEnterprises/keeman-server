@@ -459,6 +459,8 @@ struct CommitContext<'a> {
     ip_hint: &'a str,
     quota: u64,
     audit: &'a Audit,
+    /// The rate limit for new roles statements of the signer.
+    limit_roles: &'a (dyn Fn(&str) -> ApiResult<()> + Send + Sync),
 }
 
 async fn commit_in(
@@ -474,6 +476,7 @@ async fn commit_in(
         ip_hint,
         quota,
         audit,
+        ..
     } = *context;
     require(conn, vault_id, user_id, Need::Owner).await?;
     let rotation = rotation(conn, rotation_id, vault_id, user_id, now).await?;
@@ -559,7 +562,9 @@ async fn commit_in(
             owners,
             key_version: rotation.new_key_version,
             new_key: true,
+            require_change: false,
         };
+        (context.limit_roles)(user_id)?;
         Some(roles::check(conn, vault_id, user_id, signed, &after).await?)
     } else if body.roles.is_some() {
         return Err(ApiError::pointer("/roles", "the vault has no roles chain"));
@@ -709,6 +714,7 @@ pub async fn commit(
     let now = format_timestamp(app.now());
     let ip_hint = ip.hint();
     let quota = app.config.limits.user_quota_bytes;
+    let limit_roles = |signer: &str| roles::limit(&app, signer);
     let work = async |conn: &mut Conn| {
         commit_in(
             conn,
@@ -721,6 +727,7 @@ pub async fn commit(
                 ip_hint: &ip_hint,
                 quota,
                 audit: &app.audit,
+                limit_roles: &limit_roles,
             },
         )
         .await

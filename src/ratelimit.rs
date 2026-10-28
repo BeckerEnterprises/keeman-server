@@ -29,6 +29,8 @@ pub enum Bucket {
     /// Invitations sent by an account and received by an account.
     InvitesByAccount,
     InvitesByInvitee,
+    /// New statements of the roles chain signed by an account.
+    Roles,
 }
 
 #[derive(Debug, Clone, Copy)]

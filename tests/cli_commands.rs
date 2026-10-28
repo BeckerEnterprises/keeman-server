@@ -275,6 +275,17 @@ fn refuses_to_start_with_unsafe_configuration() {
             "rate_limits must all be positive",
         ),
         (
+            "no roles statements per account",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "roles_per_account_per_hour = 60",
+                    "roles_per_account_per_hour = 0",
+                )
+            }),
+            "rate_limits must all be positive",
+        ),
+        (
             "no confirmation requests per account",
             Box::new(|d: &Path| {
                 replace(

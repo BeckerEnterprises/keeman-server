@@ -266,6 +266,7 @@ async fn create_in(
         owners: vec![creator],
         key_version: 1,
         new_key: false,
+        require_change: false,
     };
     let checked = roles::check(conn, vault_id, user_id, &body.roles, &after).await?;
     // The new vault counts against its creator.

@@ -92,6 +92,7 @@ favicon_per_account_per_min = 30       # favicon, not counted against the sessio
 confirmations_per_account_per_hour = 20  # confirmation requests, not counted against the session and account limits
 invites_per_account_per_hour = 30      # invitations sent, on top of the session and account limits
 invites_per_invitee_per_hour = 30      # invitations received by one account
+roles_per_account_per_hour = 60        # new owner-list statements an account signs, on top of the session and account limits
 
 [logging]
 level = "info"

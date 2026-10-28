@@ -55,18 +55,45 @@ pub struct Stored {
     pub signature: Vec<u8>,
 }
 
-/// The statements after `since`, ascending.
-pub async fn since(
+/// Version and stored size of the statements after `since`, ascending, at
+/// most `limit`; `length()` of a BLOB does not read its content.
+pub struct Size {
+    pub version: i64,
+    pub bytes: i64,
+}
+
+pub async fn sizes_since(
     conn: &mut Conn,
     vault_id: &str,
     since: i64,
+    limit: i64,
+) -> Result<Vec<Size>, sqlx::Error> {
+    sqlx::query_as!(
+        Size,
+        r#"SELECT version, length(statement) + length(signature) AS "bytes!: i64"
+           FROM vault_roles WHERE vault_id = ? AND version > ? ORDER BY version LIMIT ?"#,
+        vault_id,
+        since,
+        limit
+    )
+    .fetch_all(&mut *conn)
+    .await
+}
+
+/// The statements after `since` up to `until`, ascending.
+pub async fn between(
+    conn: &mut Conn,
+    vault_id: &str,
+    since: i64,
+    until: i64,
 ) -> Result<Vec<Stored>, sqlx::Error> {
     sqlx::query_as!(
         Stored,
         "SELECT version, statement, signature FROM vault_roles
-         WHERE vault_id = ? AND version > ? ORDER BY version",
+         WHERE vault_id = ? AND version > ? AND version <= ? ORDER BY version",
         vault_id,
-        since
+        since,
+        until
     )
     .fetch_all(&mut *conn)
     .await

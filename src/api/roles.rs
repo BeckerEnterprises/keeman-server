@@ -10,7 +10,7 @@ use axum::http::{StatusCode, Uri};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::objects::counter;
+use super::objects::{PAGE_BUDGET, counter};
 use super::vaults::{Need, require, vault_id};
 use crate::app::App;
 use crate::audit::Audit;
@@ -20,6 +20,7 @@ use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
 use crate::extract::{StrictJson, parse_query};
+use crate::ratelimit::{Bucket, Quota};
 use crate::roles;
 use crate::types::{Signature, StatementBytes, encode_base64url};
 
@@ -39,6 +40,23 @@ pub struct After {
     pub key_version: i64,
     /// A rotation: the statement commits to a new key.
     pub new_key: bool,
+    /// A follow-up must drop an owner of the head; one that changes nothing
+    /// would only make the chain grow.
+    pub require_change: bool,
+}
+
+/// Default and maximum page size of `GET …/roles`.
+const MAX_LIMIT: i64 = 1000;
+
+/// One more statement signed by `signer`, on top of the general limits:
+/// `429` once it signed `roles_per_account_per_hour`. The chain only grows,
+/// so this bounds what an owner can make every member load.
+pub fn limit(app: &App, signer: &str) -> ApiResult<()> {
+    app.limit(
+        Bucket::Roles,
+        signer,
+        Quota::per_hour(app.config.rate_limits.roles_per_account_per_hour),
+    )
 }
 
 /// A statement that passed the check, ready to become the head.
@@ -97,6 +115,15 @@ pub async fn check(
         };
     if !follows {
         return Err(ApiError::roles_conflict(head_version));
+    }
+    if after.require_change
+        && let Some(head) = &head_statement
+        && head
+            .owners
+            .iter()
+            .all(|owner| statement.owner(&owner.user_id).is_some())
+    {
+        return Err(invalid("the statement must drop an owner of the head"));
     }
     if statement.signer != caller {
         return Err(invalid("the caller must sign the statement"));
@@ -181,7 +208,14 @@ pub async fn has_chain(conn: &mut Conn, vault_id: &str) -> ApiResult<bool> {
     Ok(db::roles::head(conn, vault_id).await?.is_some())
 }
 
-/// `GET /v1/vaults/{id}/roles?since=`: for active members and invitees.
+/// Characters of the Base64url text of `bytes` bytes.
+fn base64_len(bytes: i64) -> i64 {
+    (bytes.max(0) * 4 + 2) / 3
+}
+
+/// `GET /v1/vaults/{id}/roles?since=&limit=`: for active members and
+/// invitees, in pages of at most `limit` statements and 4 MiB of Base64url,
+/// always at least one; `next_since` continues after the last one.
 pub async fn get(
     State(app): State<Arc<App>>,
     session: AuthSession,
@@ -189,17 +223,43 @@ pub async fn get(
     uri: Uri,
 ) -> ApiResult<Json<Value>> {
     let vault_id = vault_id(&path)?;
-    let query = parse_query(uri.query(), &["since"])?;
+    let query = parse_query(uri.query(), &["since", "limit"])?;
     let since = match query.get("since") {
         None => 0,
         Some(text) => counter(text).ok_or_else(|| ApiError::parameter("since", "invalid value"))?,
+    };
+    let limit = match query.get("limit") {
+        None => MAX_LIMIT,
+        Some(text) => counter(text)
+            .filter(|l| (1..=MAX_LIMIT).contains(l))
+            .ok_or_else(|| ApiError::parameter("limit", "must be 1-1000"))?,
     };
     let mut tx = app.db.read.begin().await?;
     db::vaults::membership(&mut tx, vault_id, &session.user_id)
         .await?
         .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;
-    let statements: Vec<Value> = db::roles::since(&mut tx, vault_id, since)
-        .await?
+    // Sizes first, so a long chain never passes through memory at once.
+    let sizes = db::roles::sizes_since(&mut tx, vault_id, since, limit + 1).await?;
+    let mut total = 0;
+    let mut until = since;
+    let mut taken = 0;
+    for size in sizes.iter().take(usize::try_from(limit).unwrap_or(0)) {
+        let length = base64_len(size.bytes);
+        if taken > 0 && total + length > PAGE_BUDGET {
+            break;
+        }
+        total += length;
+        until = size.version;
+        taken += 1;
+    }
+    let rows = if taken > 0 {
+        db::roles::between(&mut tx, vault_id, since, until).await?
+    } else {
+        Vec::new()
+    };
+    tx.commit().await?;
+    let next_since = (sizes.len() > taken).then_some(until);
+    let statements: Vec<Value> = rows
         .into_iter()
         .map(|s| {
             json!({
@@ -209,7 +269,9 @@ pub async fn get(
             })
         })
         .collect();
-    Ok(Json(json!({ "statements": statements })))
+    Ok(Json(
+        json!({ "statements": statements, "next_since": next_since }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -241,7 +303,9 @@ pub async fn append(
         owners: db::roles::owner_keys(&mut tx, vault_id).await?,
         key_version: vault.key_version,
         new_key: false,
+        require_change: true,
     };
+    limit(&app, user_id)?;
     let checked = check(&mut tx, vault_id, user_id, &body.roles, &after).await?;
     store(&mut tx, &app.audit, vault_id, &checked, &now, &ip.hint()).await?;
     let recipients = db::vaults::active_members(&mut tx, vault_id).await?;

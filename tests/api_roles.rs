@@ -93,13 +93,16 @@ async fn the_chain_starts_with_the_vault_and_is_read_from_a_version() {
     let tail = t.call(chain(&alice, &vault_id, "?since=1")).await.json();
     assert_eq!(tail["statements"].as_array().unwrap().len(), 1);
     let none = t.call(chain(&alice, &vault_id, "?since=2")).await.json();
-    assert_eq!(none, json!({ "statements": [] }));
+    assert_eq!(none, json!({ "statements": [], "next_since": null }));
     for query in [
         "?since=-1",
         "?since=01",
         "?since=x",
         "?since=1&since=1",
         "?other=1",
+        "?limit=0",
+        "?limit=1001",
+        "?limit=01",
     ] {
         let response = t.call(chain(&alice, &vault_id, query)).await;
         assert_eq!(response.status, StatusCode::BAD_REQUEST, "{query}");
@@ -564,6 +567,20 @@ async fn older_vaults_get_their_first_statement_and_departed_owners_are_dropped(
         response.text()
     );
     assert_eq!(head_version(&t, &alice, &vault_id).await, 2);
+    // A follow-up that drops nobody would change nothing but the length.
+    let head = t.roles_head(&alice, &vault_id).await.unwrap();
+    let same = successor(&head, vec![owner(&alice)], &alice.user_id);
+    let response = t
+        .call(append(&alice, &vault_id, &signed(&alice, &same)))
+        .await;
+    assert_eq!(response.status, StatusCode::BAD_REQUEST);
+    assert_eq!(response.field_error().0, "/roles");
+    // A lost answer repeated still reads as a conflict, not as no change.
+    let repeated = t
+        .call(append(&alice, &vault_id, &signed(&alice, &dropped)))
+        .await;
+    assert_eq!(repeated.code(), "roles_conflict");
+    assert_eq!(head_version(&t, &alice, &vault_id).await, 2);
     // A first statement while some owner has no signing key yet.
     let other = t.create_vault(&alice).await;
     t.share(&alice, &other, &carol).await;
@@ -790,4 +807,197 @@ async fn rotations_commit_the_next_statement() {
         )
         .await;
     assert_eq!(refused.field_error().0, "/roles");
+}
+
+#[tokio::test]
+async fn the_chain_is_read_in_pages() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let (vault_id, _) = shared(&t, &alice, &bob).await;
+    for role in ["owner", "member"] {
+        let response = t
+            .call(t.role_change(&alice, &vault_id, &bob.user_id, role).await)
+            .await;
+        assert_eq!(
+            response.status,
+            StatusCode::NO_CONTENT,
+            "{}",
+            response.text()
+        );
+    }
+    let page = |query: &str| t.call(chain(&bob, &vault_id, query));
+    let first = page("?limit=2").await.json();
+    assert_eq!(first["statements"].as_array().unwrap().len(), 2);
+    assert_eq!(first["next_since"], 2);
+    let rest = page("?since=2&limit=2").await.json();
+    assert_eq!(rest["statements"].as_array().unwrap().len(), 1);
+    assert_eq!(rest["statements"][0]["version"], 3);
+    assert_eq!(rest["next_since"], json!(null));
+    let all = page("").await.json();
+    assert_eq!(all["statements"].as_array().unwrap().len(), 3);
+    assert_eq!(all["next_since"], json!(null));
+
+    // A page ends at 4 MiB of Base64url, but always holds one statement.
+    for version in 4..=6 {
+        t.sql(&format!(
+            "INSERT INTO vault_roles VALUES ('{vault_id}', {version}, zeroblob(2097152), zeroblob(64), zeroblob(32), '2026-10-28T00:00:00.000Z')"
+        ))
+        .await;
+    }
+    let big = page("?since=3").await.json();
+    assert_eq!(big["statements"].as_array().unwrap().len(), 1);
+    assert_eq!(big["next_since"], 4);
+    let last = page("?since=5").await.json();
+    assert_eq!(last["statements"].as_array().unwrap().len(), 1);
+    assert_eq!(last["next_since"], json!(null));
+}
+
+#[tokio::test]
+async fn new_statements_have_their_own_limit() {
+    let t = TestApp::with_config(
+        "[rate_limits]\nroles_per_account_per_hour = 2\n[security]\naccess_token_ttl_minutes = 60\n",
+    )
+    .await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let carol = t.register("carol@example.com").await;
+    let (vault_id, _) = shared(&t, &alice, &bob).await;
+    t.share(&alice, &vault_id, &carol).await;
+    let change = async |account: &Account, target: &Account, role: &str| {
+        t.call(
+            t.role_change(account, &vault_id, &target.user_id, role)
+                .await,
+        )
+        .await
+    };
+    assert_eq!(
+        change(&alice, &bob, "owner").await.status,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        change(&alice, &carol, "owner").await.status,
+        StatusCode::NO_CONTENT
+    );
+    let limited = change(&alice, &carol, "member").await;
+    assert_eq!(limited.status, StatusCode::TOO_MANY_REQUESTS);
+    assert!(limited.header("retry-after").is_some());
+    assert_eq!(head_version(&t, &alice, &vault_id).await, 3);
+    // Stepping down oneself is never limited: leaving depends on it.
+    assert_eq!(
+        change(&alice, &alice, "member").await.status,
+        StatusCode::NO_CONTENT
+    );
+
+    // Bob, now an owner with his own budget, spends it on a rotation commit:
+    // the refused commit is not stored, so the same request works later.
+    assert_eq!(
+        change(&bob, &carol, "member").await.status,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        change(&bob, &alice, "owner").await.status,
+        StatusCode::NO_CONTENT
+    );
+    let revision = t.listed(&bob, &vault_id).await.unwrap()["revision"]
+        .as_i64()
+        .unwrap();
+    let opened = t
+        .call(
+            Req::post(&format!("/v1/vaults/{vault_id}/rotations"))
+                .token(&bob.access_token)
+                .idem(&new_uuid())
+                .json(&json!({ "base_revision": revision, "new_key_version": 2 })),
+        )
+        .await;
+    assert_eq!(opened.status, StatusCode::CREATED, "{}", opened.text());
+    let rotation_id = opened.json()["rotation_id"].as_str().unwrap().to_string();
+    let objects: Vec<Value> = t.changes(&bob, &vault_id, "since=0").await.json()["objects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|o| json!({ "id": o["id"], "type": o["type"], "key_version": 2, "data": envelope(300) }))
+        .collect();
+    let uploaded = t
+        .call(
+            Req::put(&format!(
+                "/v1/vaults/{vault_id}/rotations/{rotation_id}/objects"
+            ))
+            .token(&bob.access_token)
+            .idem(&new_uuid())
+            .json(&json!({ "objects": objects })),
+        )
+        .await;
+    assert_eq!(
+        uploaded.status,
+        StatusCode::NO_CONTENT,
+        "{}",
+        uploaded.text()
+    );
+    let roles = t.rotation_roles(&bob, &vault_id, &[]).await.unwrap();
+    let key = new_uuid();
+    let commit = || {
+        Req::post(&format!(
+            "/v1/vaults/{vault_id}/rotations/{rotation_id}/commit"
+        ))
+        .token(&bob.access_token)
+        .idem(&key)
+        .json(&json!({
+            "key_wrapped": envelope(73),
+            "member_keys": [
+                { "user_id": alice.user_id, "key_box": key_box(200) },
+                { "user_id": carol.user_id, "key_box": key_box(200) },
+            ],
+            "invite_keys": [],
+            "remove_user_ids": [],
+            "drop_objects": [],
+            "roles": roles,
+        }))
+    };
+    let refused = t.call(commit()).await;
+    assert_eq!(
+        refused.status,
+        StatusCode::TOO_MANY_REQUESTS,
+        "{}",
+        refused.text()
+    );
+    t.advance(time::Duration::minutes(31));
+    let done = t.call(commit()).await;
+    assert_eq!(done.status, StatusCode::OK, "{}", done.text());
+}
+
+#[tokio::test]
+async fn appending_counts_against_the_same_limit() {
+    let t = TestApp::with_config("[rate_limits]\nroles_per_account_per_hour = 1\n").await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let (vault_id, _) = shared(&t, &alice, &bob).await;
+    without_chain(&t, &vault_id).await;
+    t.call(
+        t.role_change(&alice, &vault_id, &bob.user_id, "owner")
+            .await,
+    )
+    .await;
+    let both = genesis(
+        &vault_id,
+        vec![owner(&alice), owner(&bob)],
+        &alice.user_id,
+        1,
+    );
+    let first = t
+        .call(append(&alice, &vault_id, &signed(&alice, &both)))
+        .await;
+    assert_eq!(first.status, StatusCode::NO_CONTENT, "{}", first.text());
+    t.sql(&format!(
+        "DELETE FROM memberships WHERE vault_id = '{vault_id}' AND user_id = '{}'",
+        bob.user_id
+    ))
+    .await;
+    let head = t.roles_head(&alice, &vault_id).await.unwrap();
+    let dropped = successor(&head, vec![owner(&alice)], &alice.user_id);
+    let limited = t
+        .call(append(&alice, &vault_id, &signed(&alice, &dropped)))
+        .await;
+    assert_eq!(limited.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(head_version(&t, &alice, &vault_id).await, 1);
 }

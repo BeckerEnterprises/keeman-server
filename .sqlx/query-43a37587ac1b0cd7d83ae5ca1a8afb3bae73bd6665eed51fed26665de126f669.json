@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT version, statement, signature FROM vault_roles\n         WHERE vault_id = ? AND version > ? ORDER BY version",
+  "query": "SELECT version, statement, signature FROM vault_roles\n         WHERE vault_id = ? AND version > ? AND version <= ? ORDER BY version",
   "describe": {
     "columns": [
       {
@@ -38,7 +38,7 @@
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 3
     },
     "nullable": [
       false,
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "dd01bd8a7d32daec4b74925f457bd42c2e24d10c1b1df45e0eddc56df970cb0e"
+  "hash": "43a37587ac1b0cd7d83ae5ca1a8afb3bae73bd6665eed51fed26665de126f669"
 }

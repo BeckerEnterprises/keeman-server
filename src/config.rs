@@ -210,6 +210,9 @@ pub struct RateLimitsSection {
     /// Invitations, on top of the session and account limits.
     pub invites_per_account_per_hour: u32,
     pub invites_per_invitee_per_hour: u32,
+    /// New statements of the roles chain an account signs, on top of the
+    /// session and account limits; stepping down oneself is not counted.
+    pub roles_per_account_per_hour: u32,
 }
 
 impl Default for RateLimitsSection {
@@ -231,6 +234,7 @@ impl Default for RateLimitsSection {
             pairings_per_account_per_hour: None,
             invites_per_account_per_hour: 30,
             invites_per_invitee_per_hour: 30,
+            roles_per_account_per_hour: 60,
         }
     }
 }
@@ -362,6 +366,7 @@ impl Config {
             r.confirmations_per_account_per_hour,
             r.invites_per_account_per_hour,
             r.invites_per_invitee_per_hour,
+            r.roles_per_account_per_hour,
         ]
         .contains(&0)
         {

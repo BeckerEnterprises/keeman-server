@@ -310,7 +310,13 @@ pub async fn update(
             owners,
             key_version: current_key_version(&mut tx, vault_id).await?,
             new_key: false,
+            require_change: false,
         };
+        // Stepping down oneself is forced before leaving and deleting the
+        // account, so it is never limited.
+        if !(target == user_id && body.role == Role::Member) {
+            roles::limit(&app, user_id)?;
+        }
         Some(roles::check(&mut tx, vault_id, user_id, signed, &after).await?)
     } else if body.roles.is_some() {
         return Err(ApiError::pointer("/roles", "the vault has no roles chain"));

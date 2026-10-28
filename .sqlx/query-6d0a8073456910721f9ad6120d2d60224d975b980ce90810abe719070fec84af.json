@@ -1,0 +1,33 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT version, length(statement) + length(signature) AS \"bytes!: i64\"\n           FROM vault_roles WHERE vault_id = ? AND version > ? ORDER BY version LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "version",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vault_roles",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "name": "bytes!: i64",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "6d0a8073456910721f9ad6120d2d60224d975b980ce90810abe719070fec84af"
+}
