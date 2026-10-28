@@ -23,6 +23,7 @@ use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::events;
 use crate::extract::{StrictJson, json};
 use crate::ratelimit::{Bucket, Quota};
+use crate::roles;
 use crate::types::{KdfParamsInput, Key32, Salt, UserDataEnvelope, WrappedKey, encode_base64url};
 
 /// Lifetime of a reauth token.
@@ -302,6 +303,9 @@ pub async fn put_signing_key(
 ) -> ApiResult<StatusCode> {
     let user_id = session.user_id.as_str();
     let key = &body.signing_public_key.0;
+    if !roles::acceptable_key(key) {
+        return Err(super::auth::signing_key_refused());
+    }
     let now_text = format_timestamp(app.now());
     let mut tx = reauthed.begin(&app).await?;
     match db::users::signing_key(&mut *tx, user_id).await? {

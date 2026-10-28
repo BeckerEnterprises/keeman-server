@@ -169,21 +169,90 @@ pub fn hash(bytes: &[u8]) -> [u8; 32] {
     Blake2b::<U32>::digest(with_context(HASH_CONTEXT, bytes)).into()
 }
 
+/// Encodings of the Ed25519 points of small order, compared without the
+/// top bit: the list libsodium refuses for R and for public keys. ring takes
+/// them, so without this check the server would accept signatures that
+/// every client rejects.
+const SMALL_ORDER: [[u8; 32]; 7] = [
+    // 0 (order 4)
+    [0; 32],
+    // 1 (order 1)
+    [
+        0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0,
+    ],
+    // order 8
+    [
+        0x26, 0xe8, 0x95, 0x8f, 0xc2, 0xb2, 0x27, 0xb0, 0x45, 0xc3, 0xf4, 0x89, 0xf2, 0xef, 0x98,
+        0xf0, 0xd5, 0xdf, 0xac, 0x05, 0xd3, 0xc6, 0x33, 0x39, 0xb1, 0x38, 0x02, 0x88, 0x6d, 0x53,
+        0xfc, 0x05,
+    ],
+    // order 8
+    [
+        0xc7, 0x17, 0x6a, 0x70, 0x3d, 0x4d, 0xd8, 0x4f, 0xba, 0x3c, 0x0b, 0x76, 0x0d, 0x10, 0x67,
+        0x0f, 0x2a, 0x20, 0x53, 0xfa, 0x2c, 0x39, 0xcc, 0xc6, 0x4e, 0xc7, 0xfd, 0x77, 0x92, 0xac,
+        0x03, 0x7a,
+    ],
+    // p - 1 (order 2)
+    [
+        0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0x7f,
+    ],
+    // p, a second encoding of 0
+    [
+        0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0x7f,
+    ],
+    // p + 1, a second encoding of 1
+    [
+        0xee, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0x7f,
+    ],
+];
+
+fn small_order(point: &[u8; 32]) -> bool {
+    SMALL_ORDER
+        .iter()
+        .any(|blocked| blocked[..31] == point[..31] && blocked[31] == point[31] & 0x7f)
+}
+
+/// Whether `y` (the point without its sign bit) is below 2^255 - 19.
+fn canonical(point: &[u8; 32]) -> bool {
+    let top = point[31] & 0x7f == 0x7f && point[1..31].iter().all(|b| *b == 0xff);
+    !(top && point[0] >= 0xed)
+}
+
+/// A public signing key libsodium accepts: canonical and not of small
+/// order. The server takes no other, neither when it is registered nor in a
+/// statement.
+pub fn acceptable_key(signing_key: &[u8; 32]) -> bool {
+    canonical(signing_key) && !small_order(signing_key)
+}
+
 /// The Ed25519 signature of `signing_key` over the roles context and the bytes.
 pub fn verify(signing_key: &[u8; 32], bytes: &[u8], signature: &[u8; 64]) -> bool {
     verify_in(SIGNATURE_CONTEXT, signing_key, bytes, signature)
 }
 
-/// The Ed25519 signature of `signing_key` over `context ‖ 0x00 ‖ bytes`.
+/// The Ed25519 signature of `signing_key` over `context ‖ 0x00 ‖ bytes`,
+/// checked as strictly as libsodium: besides ring's check, R and the key
+/// must not be of small order and the key must be canonical.
 pub fn verify_in(
     context: &str,
     signing_key: &[u8; 32],
     bytes: &[u8],
     signature: &[u8; 64],
 ) -> bool {
-    UnparsedPublicKey::new(&ED25519, signing_key)
-        .verify(&with_context(context, bytes), signature)
-        .is_ok()
+    let mut r = [0; 32];
+    r.copy_from_slice(&signature[..32]);
+    acceptable_key(signing_key)
+        && !small_order(&r)
+        && UnparsedPublicKey::new(&ED25519, signing_key)
+            .verify(&with_context(context, bytes), signature)
+            .is_ok()
 }
 
 #[cfg(test)]
@@ -275,6 +344,24 @@ mod tests {
         let previous_null = t.replace(&format!("\"{}\"", encode_base64url(&[1; 32])), "null");
         assert!(parse(previous_null.as_bytes()).is_none());
         assert!(parse(&[0xff]).is_none());
+    }
+
+    #[test]
+    fn keys_of_small_order_or_not_canonical() {
+        for blocked in SMALL_ORDER {
+            assert!(!acceptable_key(&blocked));
+            let mut signed = blocked;
+            signed[31] |= 0x80;
+            assert!(!acceptable_key(&signed));
+        }
+        // p + 2 encodes 2 and is not canonical; p - 2 is.
+        let mut above = SMALL_ORDER[6];
+        above[0] = 0xef;
+        assert!(!canonical(&above));
+        let mut below = SMALL_ORDER[4];
+        below[0] = 0xeb;
+        assert!(canonical(&below));
+        assert!(acceptable_key(&[9; 32]));
     }
 
     #[test]

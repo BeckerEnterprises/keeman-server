@@ -364,6 +364,20 @@ async fn register_validation() {
         register_raw(&t, &body).await.field_error().0,
         "/signing_public_key"
     );
+    // A key of small order or in a non-canonical form: clients refuse every
+    // signature with it, so the server never takes it.
+    let mut identity = [0u8; 32];
+    identity[0] = 1;
+    let mut non_canonical = [0xffu8; 32];
+    non_canonical[0] = 0xef;
+    non_canonical[31] = 0x7f;
+    for key in [identity, [0; 32], non_canonical] {
+        let mut body = base.clone();
+        body["signing_public_key"] = json!(encode_base64url(&key));
+        let response = register_raw(&t, &body).await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST);
+        assert_eq!(response.field_error().0, "/signing_public_key");
+    }
 
     // Envelope fields over their byte limit → 413.
     let mut body = base.clone();

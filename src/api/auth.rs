@@ -23,6 +23,7 @@ use crate::db::{self, Conn};
 use crate::error::{ApiError, ApiResult, ErrorCode};
 use crate::extract::{json, optional_json, present};
 use crate::ratelimit::{Bucket, Quota};
+use crate::roles;
 use crate::types::{
     ClientType, DEFAULT_KDF, Device, Email, KdfParamsInput, Key32, Salt, Token, UserDataEnvelope,
     Uuid, WrappedKey, encode_base64url,
@@ -77,6 +78,12 @@ pub struct RegisterBody {
     device: Device,
 }
 
+/// A signing key libsodium would refuse (small order, not canonical): no
+/// client could ever accept a signature made with it.
+pub(crate) fn signing_key_refused() -> ApiError {
+    ApiError::pointer("/signing_public_key", "not a usable signing key")
+}
+
 pub async fn register(
     State(app): State<Arc<App>>,
     ip: ClientIp,
@@ -88,6 +95,9 @@ pub async fn register(
         return Err(ApiError::new(ErrorCode::RegistrationClosed));
     }
     let body: RegisterBody = json(request).await?;
+    if !roles::acceptable_key(&body.signing_public_key.0) {
+        return Err(signing_key_refused());
+    }
     // Only well-formed requests count.
     app.limit(
         Bucket::Register,

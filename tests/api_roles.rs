@@ -8,7 +8,7 @@ mod support;
 use axum::http::StatusCode;
 use keeman_server::roles::{Statement, encode, hash};
 use serde_json::{Value, json};
-use support::roles::{genesis, owner, rotated, sign_bytes, signed, successor};
+use support::roles::{genesis, owner, rotated, sign_bytes, sign_small_r, signed, successor};
 use support::{Account, Req, TestApp, envelope, key_box, new_uuid, vault_body};
 
 fn chain(account: &Account, vault_id: &str, query: &str) -> Req {
@@ -358,6 +358,12 @@ async fn statements_name_the_owners_with_their_registered_keys() {
     );
     tampered["signature"] = other["signature"].clone();
     assert_eq!(t.call(promote(tampered)).await.code(), "validation_failed");
+    // A signature with R of small order: ring alone would take it, every
+    // client refuses it, and the vault would be stuck with that head.
+    let small_r = sign_small_r(&alice, &encode(&good));
+    let response = t.call(promote(small_r)).await;
+    assert_eq!(response.status, StatusCode::BAD_REQUEST);
+    assert_eq!(response.field_error().0, "/roles");
     let recommitted = Statement {
         key_commitment: [3; 32],
         ..good.clone()

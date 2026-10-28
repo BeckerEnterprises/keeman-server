@@ -151,6 +151,27 @@
       "expected": {
         "error": "format"
       }
+    },
+    {
+      "id": "r-small-order",
+      "base": "sign-short",
+      "override": {
+        "signature_hex": "0100000000000000000000000000000000000000000000000000000000000000f7335d0eb8d748c56c2b49e8a95692fabc3e7c4f7be7c1ddc029ca0905a0740e"
+      },
+      "expected": {
+        "error": "auth"
+      }
+    },
+    {
+      "id": "pk-small-order",
+      "base": "sign-short",
+      "override": {
+        "public_key_hex": "0100000000000000000000000000000000000000000000000000000000000000",
+        "signature_hex": "cc8758a83782f0e4d83bca1a5835c03f7239bfc0884815f4cf064c40286f30de8ad72a5ccf332d6338e448a214c944f24dcea8a1eaf53fb7276e29f621ee7504"
+      },
+      "expected": {
+        "error": "auth"
+      }
     }
   ]
 }

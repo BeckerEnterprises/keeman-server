@@ -5,6 +5,7 @@
 mod support;
 
 use axum::http::StatusCode;
+use keeman_server::types::encode_base64url;
 use serde_json::{Value, json};
 use support::{Req, TestApp, envelope, random_b64, unique_ip};
 use time::Duration;
@@ -61,6 +62,14 @@ async fn an_older_account_adds_its_signing_key_once() {
     let reauth = t.reauth(&alice).await;
     let malformed = t.call(put("AAAA", Some(&reauth))).await;
     assert_eq!(malformed.field_error().0, "/signing_public_key");
+    // The identity: of small order, so no client would accept its signatures.
+    let mut identity = [0u8; 32];
+    identity[0] = 1;
+    let small = t
+        .call(put(&encode_base64url(&identity), Some(&reauth)))
+        .await;
+    assert_eq!(small.status, StatusCode::BAD_REQUEST);
+    assert_eq!(small.field_error().0, "/signing_public_key");
     let set = t.call(put(&key, Some(&reauth))).await;
     assert_eq!(set.status, StatusCode::NO_CONTENT, "{}", set.text());
     // The same key again is a repetition; another one never replaces it.

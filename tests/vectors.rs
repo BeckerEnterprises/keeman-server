@@ -223,6 +223,9 @@ fn signing_vectors() {
             let signature = pair.sign(&signed).as_ref().to_vec();
             assert_eq!(hex(&signature), case["expected"]["signature_hex"], "{id}");
             signature
+        } else if let Some(built) = effective["signature_hex"].as_str() {
+            // A signature built for the case, with R or the key of small order.
+            unhex(built)
         } else {
             let base = all.iter().find(|c| c["id"] == case["base"]).unwrap();
             mutate(
@@ -231,24 +234,28 @@ fn signing_vectors() {
             )
         };
         let public_key = unhex(effective["public_key_hex"].as_str().unwrap());
-        let valid = public_key.len() == 32
-            && signature.len() == 64
+        let expected = case["expected"].get("error").is_none();
+        let sized = <[u8; 32]>::try_from(public_key.as_slice())
+            .ok()
+            .zip(<[u8; 64]>::try_from(signature.as_slice()).ok());
+        // The server's check must agree with the clients' (libsodium).
+        let accepted =
+            sized.is_some_and(|(key, sig)| roles::verify_in(context, &key, &message, &sig));
+        assert_eq!(accepted, expected, "{id}");
+        // ring alone checks less strictly: it takes R or a key of small order,
+        // which is why the server refuses those before asking ring.
+        let ring_accepts = sized.is_some()
             && UnparsedPublicKey::new(&ED25519, &public_key)
                 .verify(&signed, &signature)
                 .is_ok();
-        assert_eq!(valid, case["expected"].get("error").is_none(), "{id}");
-        // The server's own check, where the context is the roles chain's.
-        if context == roles::SIGNATURE_CONTEXT
-            && let (Ok(key), Ok(sig)) = (
-                <[u8; 32]>::try_from(public_key.as_slice()),
-                <[u8; 64]>::try_from(signature.as_slice()),
-            )
-        {
-            assert_eq!(roles::verify(&key, &message, &sig), valid, "{id}");
+        if ["r-small-order", "pk-small-order"].contains(&id) {
+            assert!(ring_accepts, "{id}");
+        } else {
+            assert_eq!(ring_accepts, expected, "{id}");
         }
         verified += 1;
     }
-    assert_eq!(verified, 11);
+    assert_eq!(verified, 13);
 }
 
 fn key32(value: &Value) -> [u8; 32] {
