@@ -659,7 +659,7 @@ async fn rotations_commit_the_next_statement() {
             Req::post(&format!("/v1/vaults/{vault_id}/rotations"))
                 .token(&alice.access_token)
                 .idem(&new_uuid())
-                .json(&json!({ "base_revision": revision, "new_key_version": 2 })),
+                .json(&json!({ "base_revision": revision, "new_key_version": 2, "remove_user_ids": [carol.user_id] })),
         )
         .await;
     let rotation_id = opened.json()["rotation_id"].as_str().unwrap().to_string();

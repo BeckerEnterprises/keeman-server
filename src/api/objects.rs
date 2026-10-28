@@ -310,6 +310,7 @@ async fn batch_in(
     now: &str,
 ) -> ApiResult<Applied> {
     require(conn, vault_id, user_id, Need::Member).await?;
+    super::rotations::not_being_removed(conn, vault_id, user_id, now).await?;
     let vault = db::vaults::vault(conn, vault_id)
         .await?
         .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;

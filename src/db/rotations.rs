@@ -10,6 +10,8 @@ pub struct Rotation {
     pub new_key_version: i64,
     pub created_by: String,
     pub expires_at: String,
+    /// JSON list of the accounts the rotation is to remove.
+    pub remove_user_ids: String,
 }
 
 /// Opens a rotation; an older open rotation of the vault is discarded.
@@ -18,24 +20,47 @@ pub async fn replace(conn: &mut Conn, r: &Rotation) -> Result<(), sqlx::Error> {
         .execute(&mut *conn)
         .await?;
     sqlx::query!(
-        "INSERT INTO rotations (id, vault_id, base_revision, new_key_version, created_by, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO rotations (id, vault_id, base_revision, new_key_version, created_by, expires_at,
+                                remove_user_ids)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
         r.id,
         r.vault_id,
         r.base_revision,
         r.new_key_version,
         r.created_by,
-        r.expires_at
+        r.expires_at,
+        r.remove_user_ids
     )
     .execute(&mut *conn)
     .await?;
     Ok(())
 }
 
+/// Whether an open rotation of the vault is to remove the account.
+pub async fn removes(
+    conn: &mut Conn,
+    vault_id: &str,
+    user_id: &str,
+    now: &str,
+) -> Result<bool, sqlx::Error> {
+    let found = sqlx::query_scalar!(
+        r#"SELECT 1 AS "one!: i64" FROM rotations r
+           WHERE r.vault_id = ? AND r.expires_at > ?
+             AND EXISTS (SELECT 1 FROM json_each(r.remove_user_ids) WHERE value = ?)"#,
+        vault_id,
+        now,
+        user_id
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    Ok(found.is_some())
+}
+
 pub async fn get(conn: &mut Conn, id: &str) -> Result<Option<Rotation>, sqlx::Error> {
     sqlx::query_as!(
         Rotation,
-        r#"SELECT id AS "id!", vault_id, base_revision, new_key_version, created_by, expires_at
+        r#"SELECT id AS "id!", vault_id, base_revision, new_key_version, created_by, expires_at,
+                  remove_user_ids
            FROM rotations WHERE id = ?"#,
         id
     )

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", vault_id, base_revision, new_key_version, created_by, expires_at\n           FROM rotations WHERE id = ?",
+  "query": "SELECT id AS \"id!\", vault_id, base_revision, new_key_version, created_by, expires_at,\n                  remove_user_ids\n           FROM rotations WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -68,6 +68,17 @@
             "name": "expires_at"
           }
         }
+      },
+      {
+        "name": "remove_user_ids",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "rotations",
+            "name": "remove_user_ids"
+          }
+        }
       }
     ],
     "parameters": {
@@ -79,8 +90,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "d739f1a102f67e56501271b09b87edff6065a41bd5eda73b52494dc01e6fb1fb"
+  "hash": "80c2725dd1a0572703998aa23467b65e8cabcd2a629e998d3800903638b044ed"
 }

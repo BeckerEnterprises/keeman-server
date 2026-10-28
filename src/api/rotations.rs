@@ -30,12 +30,17 @@ use crate::types::{KeyBox, ObjectData, ObjectType, Positive, Uuid, WrappedKey};
 const LIFETIME: Duration = Duration::hours(1);
 /// At most this many dropped objects per commit.
 const MAX_DROPS: usize = 10_000;
+/// At most this many accounts a rotation is to remove.
+const MAX_REMOVALS: usize = 1000;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OpenBody {
     base_revision: Positive,
     new_key_version: Positive,
+    /// The accounts the rotation is to remove; they cannot write meanwhile.
+    #[serde(default)]
+    remove_user_ids: Vec<Uuid>,
 }
 
 #[derive(Deserialize)]
@@ -139,14 +144,58 @@ async fn rotation(
         .ok_or_else(|| ApiError::new(ErrorCode::RotationInvalid))
 }
 
+/// `409 rotation_in_progress` for an account an open rotation of the vault
+/// is to remove. Its batches would keep the revision moving and so block its
+/// own removal (the commit needs an unchanged revision); an owner among them
+/// could also replace the rotation or interfere with a new statement.
+pub(crate) async fn not_being_removed(
+    conn: &mut Conn,
+    vault_id: &str,
+    user_id: &str,
+    now: &str,
+) -> ApiResult<()> {
+    if db::rotations::removes(conn, vault_id, user_id, now).await? {
+        return Err(ApiError::new(ErrorCode::RotationInProgress));
+    }
+    Ok(())
+}
+
+/// Structural checks of the accounts to remove, before the transaction.
+fn check_open(user_id: &str, body: &OpenBody) -> ApiResult<()> {
+    if body.remove_user_ids.len() > MAX_REMOVALS {
+        return Err(ApiError::pointer(
+            "/remove_user_ids",
+            "at most 1000 accounts",
+        ));
+    }
+    let mut seen = HashSet::new();
+    for (i, id) in body.remove_user_ids.iter().enumerate() {
+        if id.0 == user_id {
+            return Err(ApiError::pointer(
+                format!("/remove_user_ids/{i}"),
+                "the caller cannot be listed",
+            ));
+        }
+        if !seen.insert(id.0.as_str()) {
+            return Err(ApiError::pointer(
+                format!("/remove_user_ids/{i}"),
+                "an account may appear only once",
+            ));
+        }
+    }
+    Ok(())
+}
+
 async fn open_in(
     conn: &mut Conn,
     user_id: &str,
     vault_id: &str,
     body: &OpenBody,
-    expires_at: &str,
+    times: (&str, &str),
 ) -> ApiResult<((), StatusCode, Value)> {
+    let (now, expires_at) = times;
     require(conn, vault_id, user_id, Need::Owner).await?;
+    not_being_removed(conn, vault_id, user_id, now).await?;
     let vault = db::vaults::vault(conn, vault_id)
         .await?
         .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;
@@ -159,6 +208,7 @@ async fn open_in(
         );
     }
     let id = uuid::Uuid::now_v7().to_string();
+    let removed: Vec<&str> = body.remove_user_ids.iter().map(|u| u.0.as_str()).collect();
     let rotation = db::rotations::Rotation {
         id: id.clone(),
         vault_id: vault_id.to_string(),
@@ -166,6 +216,7 @@ async fn open_in(
         new_key_version: body.new_key_version.0,
         created_by: user_id.to_string(),
         expires_at: expires_at.to_string(),
+        remove_user_ids: ids_json(&removed)?,
     };
     db::rotations::replace(conn, &rotation).await?;
     let expires_in = LIFETIME.whole_seconds();
@@ -187,10 +238,12 @@ pub async fn open(
 ) -> ApiResult<Response> {
     let vault_id = vault_id(&path)?.to_string();
     let (request, body): (_, OpenBody) = idempotency::read(request, BODY_LIMIT).await?;
+    let user_id = session.user_id.as_str();
+    check_open(user_id, &body)?;
     let now = format_timestamp(app.now());
     let expires_at = format_timestamp(app.now() + LIFETIME);
-    let user_id = session.user_id.as_str();
-    let work = async |conn: &mut Conn| open_in(conn, user_id, &vault_id, &body, &expires_at).await;
+    let work =
+        async |conn: &mut Conn| open_in(conn, user_id, &vault_id, &body, (&now, &expires_at)).await;
     let (response, _) = idempotent(&app, user_id, &request, &now, work, nothing).await?;
     Ok(response)
 }
@@ -424,6 +477,18 @@ async fn commit_in(
     } = *context;
     require(conn, vault_id, user_id, Need::Owner).await?;
     let rotation = rotation(conn, rotation_id, vault_id, user_id, now).await?;
+    // Only accounts named at the opening were kept from writing meanwhile;
+    // fewer is fine (one may have left since).
+    let announced: Vec<String> =
+        serde_json::from_str(&rotation.remove_user_ids).map_err(ApiError::internal)?;
+    for (i, id) in body.remove_user_ids.iter().enumerate() {
+        if !announced.contains(&id.0) {
+            return Err(ApiError::pointer(
+                format!("/remove_user_ids/{i}"),
+                "not named when the rotation was opened",
+            ));
+        }
+    }
     let vault = db::vaults::vault(conn, vault_id)
         .await?
         .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;

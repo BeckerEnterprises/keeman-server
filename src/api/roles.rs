@@ -233,6 +233,7 @@ pub async fn append(
     let now = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
     require(&mut tx, vault_id, user_id, Need::Owner).await?;
+    super::rotations::not_being_removed(&mut tx, vault_id, user_id, &now).await?;
     let vault = db::vaults::vault(&mut tx, vault_id)
         .await?
         .ok_or_else(|| ApiError::new(ErrorCode::NotFound))?;

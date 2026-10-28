@@ -304,7 +304,7 @@ async fn the_attestation_goes_when_a_rotation_removes_the_member() {
             Req::post(&format!("/v1/vaults/{vault_id}/rotations"))
                 .token(&alice.access_token)
                 .idem(&new_uuid())
-                .json(&json!({ "base_revision": revision, "new_key_version": 2 })),
+                .json(&json!({ "base_revision": revision, "new_key_version": 2, "remove_user_ids": [bob.user_id] })),
         )
         .await;
     assert_eq!(opened.status, StatusCode::CREATED, "{}", opened.text());

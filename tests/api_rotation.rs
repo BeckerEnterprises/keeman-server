@@ -103,10 +103,28 @@ async fn revision(t: &TestApp, account: &Account, vault_id: &str) -> i64 {
 }
 
 async fn opened(t: &TestApp, account: &Account, vault_id: &str) -> String {
+    opened_removing(t, account, vault_id, &[]).await
+}
+
+/// Opens a rotation that is to remove these accounts.
+async fn opened_removing(
+    t: &TestApp,
+    account: &Account,
+    vault_id: &str,
+    remove: &[&Account],
+) -> String {
     let base = revision(t, account, vault_id).await;
-    let response = t.call(open(account, vault_id, base, 2)).await;
+    let response = t.call(open_removing(account, vault_id, base, remove)).await;
     assert_eq!(response.status, StatusCode::CREATED, "{}", response.text());
     response.json()["rotation_id"].as_str().unwrap().to_string()
+}
+
+fn open_removing(account: &Account, vault_id: &str, base: i64, remove: &[&Account]) -> Req {
+    let remove: Vec<&str> = remove.iter().map(|a| a.user_id.as_str()).collect();
+    Req::post(&format!("/v1/vaults/{vault_id}/rotations"))
+        .token(&account.access_token)
+        .idem(&new_uuid())
+        .json(&json!({ "base_revision": base, "new_key_version": 2, "remove_user_ids": remove }))
 }
 
 #[tokio::test]
@@ -252,7 +270,7 @@ async fn a_commit_swaps_objects_keys_and_memberships() {
     t.invite_member(&alice, &vault_id, &carol).await;
     t.invite_member(&alice, &vault_id, &erin).await;
     let objects = live(&t, &alice, &vault_id).await;
-    let rotation_id = opened(&t, &alice, &vault_id).await;
+    let rotation_id = opened_removing(&t, &alice, &vault_id, &[&dave]).await;
     let uploads = reencrypted(&objects, 400);
     assert_eq!(
         t.call(upload(&alice, &vault_id, &rotation_id, &uploads))
@@ -324,7 +342,8 @@ async fn incomplete_commits_are_refused() {
     t.share(&alice, &vault_id, &bob).await;
     t.invite_member(&alice, &vault_id, &carol).await;
     let objects = live(&t, &alice, &vault_id).await;
-    let rotation_id = opened(&t, &alice, &vault_id).await;
+    // Mallory is announced, so the commit reaches the membership check.
+    let rotation_id = opened_removing(&t, &alice, &vault_id, &[&mallory]).await;
     let uploads = reencrypted(&objects, 300);
 
     let missing = t
@@ -727,4 +746,190 @@ async fn oversized_drop_tombstones_count_at_commit() {
         .call(commit(&t, &alice, &vault_id, &rotation_id, &body).await)
         .await;
     assert_eq!(response.status, StatusCode::OK, "{}", response.text());
+}
+
+#[tokio::test]
+async fn an_account_being_removed_writes_nothing_meanwhile() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let carol = t.register("carol@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    t.share(&alice, &vault_id, &bob).await;
+    t.share(&alice, &vault_id, &carol).await;
+    let base = revision(&t, &alice, &vault_id).await;
+    let opening = t
+        .call(open_removing(&alice, &vault_id, base, &[&bob]))
+        .await;
+    assert_eq!(opening.status, StatusCode::CREATED, "{}", opening.text());
+
+    // Bob's batches would keep moving the revision and so block the commit.
+    let key = new_uuid();
+    let batch = || {
+        Req::post(&format!("/v1/vaults/{vault_id}/batch"))
+            .token(&bob.access_token)
+            .idem(&key)
+            .json(
+                &json!({ "ops": [put_op("0192b3a4-5c6d-7e8f-9a0b-1c2d3e4f5c01", "entry", None)] }),
+            )
+    };
+    let refused = t.call(batch()).await;
+    assert_eq!(refused.status, StatusCode::CONFLICT);
+    assert_eq!(refused.code(), "rotation_in_progress");
+    assert_eq!(revision(&t, &alice, &vault_id).await, base);
+    // Attachments do not move the revision and stay allowed; others write.
+    let other = t
+        .batch(&carol, &vault_id, vec![put_op(&new_uuid(), "entry", None)])
+        .await;
+    assert_eq!(other.status, StatusCode::OK, "{}", other.text());
+    // The answer was not stored: once the rotation is over (here: expired),
+    // the same request with the same key goes through.
+    t.sql("UPDATE rotations SET expires_at = '2000-01-01T00:00:00.000Z'")
+        .await;
+    let later = t.call(batch()).await;
+    assert_eq!(later.status, StatusCode::OK, "{}", later.text());
+}
+
+#[tokio::test]
+async fn the_commit_removes_at_most_the_announced_accounts() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let carol = t.register("carol@example.com").await;
+    let dave = t.register("dave@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    t.share(&alice, &vault_id, &bob).await;
+    t.share(&alice, &vault_id, &carol).await;
+    t.share(&alice, &vault_id, &dave).await;
+    let objects = live(&t, &alice, &vault_id).await;
+    let uploads = reencrypted(&objects, 300);
+    let rotation_id = opened_removing(&t, &alice, &vault_id, &[&bob, &dave]).await;
+    t.call(upload(&alice, &vault_id, &rotation_id, &uploads))
+        .await;
+    // Carol was not announced.
+    let foreign = t
+        .call(
+            commit(
+                &t,
+                &alice,
+                &vault_id,
+                &rotation_id,
+                &commit_body(&[&dave], &[], &[&bob, &carol]),
+            )
+            .await,
+        )
+        .await;
+    assert_eq!(foreign.status, StatusCode::BAD_REQUEST);
+    assert_eq!(foreign.field_error().0, "/remove_user_ids/1");
+    // Dave left in the meantime; a subset is enough.
+    let left = t
+        .call(Req::delete(&format!("/v1/vaults/{vault_id}/members/me")).token(&dave.access_token))
+        .await;
+    assert_eq!(left.status, StatusCode::NO_CONTENT, "{}", left.text());
+    let done = t
+        .call(
+            commit(
+                &t,
+                &alice,
+                &vault_id,
+                &rotation_id,
+                &commit_body(&[&carol], &[], &[&bob]),
+            )
+            .await,
+        )
+        .await;
+    assert_eq!(done.status, StatusCode::OK, "{}", done.text());
+    assert!(t.listed(&bob, &vault_id).await.is_none());
+}
+
+#[tokio::test]
+async fn opening_names_valid_accounts_to_remove() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    t.share(&alice, &vault_id, &bob).await;
+    let base = revision(&t, &alice, &vault_id).await;
+    let stored = t.count("SELECT COUNT(*) FROM idempotency").await;
+    let open_with = |remove: Value| {
+        Req::post(&format!("/v1/vaults/{vault_id}/rotations"))
+            .token(&alice.access_token)
+            .idem(&new_uuid())
+            .json(
+                &json!({ "base_revision": base, "new_key_version": 2, "remove_user_ids": remove }),
+            )
+    };
+    for (remove, pointer) in [
+        (json!([alice.user_id]), "/remove_user_ids/0"),
+        (json!([bob.user_id, bob.user_id]), "/remove_user_ids/1"),
+        (json!(vec![new_uuid(); 1001]), "/remove_user_ids"),
+    ] {
+        let response = t.call(open_with(remove)).await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{pointer}");
+        assert_eq!(response.field_error().0, pointer);
+    }
+    assert_eq!(t.count("SELECT COUNT(*) FROM rotations").await, 0);
+    assert_eq!(t.count("SELECT COUNT(*) FROM idempotency").await, stored);
+}
+
+#[tokio::test]
+async fn a_co_owner_being_removed_cannot_interfere() {
+    let t = TestApp::new().await;
+    let alice = t.register("alice@example.com").await;
+    let bob = t.register("bob@example.com").await;
+    let carol = t.register("carol@example.com").await;
+    let vault_id = t.create_vault(&alice).await;
+    t.share(&alice, &vault_id, &bob).await;
+    t.share(&alice, &vault_id, &carol).await;
+    let promoted = t
+        .call(
+            t.role_change(&alice, &vault_id, &bob.user_id, "owner")
+                .await,
+        )
+        .await;
+    assert_eq!(
+        promoted.status,
+        StatusCode::NO_CONTENT,
+        "{}",
+        promoted.text()
+    );
+    let objects = live(&t, &alice, &vault_id).await;
+    let rotation_id = opened_removing(&t, &alice, &vault_id, &[&bob]).await;
+
+    // Bob can neither replace the rotation nor change roles meanwhile.
+    let base = revision(&t, &bob, &vault_id).await;
+    let replace = t.call(open(&bob, &vault_id, base, 2)).await;
+    assert_eq!(replace.code(), "rotation_in_progress");
+    let demote = t
+        .call(
+            t.role_change(&bob, &vault_id, &alice.user_id, "member")
+                .await,
+        )
+        .await;
+    assert_eq!(demote.code(), "rotation_in_progress");
+    let appended = t
+        .call(
+            Req::post(&format!("/v1/vaults/{vault_id}/roles"))
+                .token(&bob.access_token)
+                .json(&json!({ "roles": support::roles::sign_bytes(&bob, b"x") })),
+        )
+        .await;
+    assert_eq!(appended.code(), "rotation_in_progress");
+
+    let uploads = reencrypted(&objects, 300);
+    t.call(upload(&alice, &vault_id, &rotation_id, &uploads))
+        .await;
+    let done = t
+        .call(
+            commit(
+                &t,
+                &alice,
+                &vault_id,
+                &rotation_id,
+                &commit_body(&[&carol], &[], &[&bob]),
+            )
+            .await,
+        )
+        .await;
+    assert_eq!(done.status, StatusCode::OK, "{}", done.text());
 }

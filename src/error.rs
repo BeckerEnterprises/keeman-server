@@ -52,6 +52,7 @@ error_codes! {
     Conflict => ("conflict", CONFLICT, "Conflict"),
     RefreshSuperseded => ("refresh_superseded", CONFLICT, "Refresh superseded"),
     RotationInvalid => ("rotation_invalid", CONFLICT, "Rotation invalid"),
+    RotationInProgress => ("rotation_in_progress", CONFLICT, "An open rotation removes the caller"),
     StaleKeyVersion => ("stale_key_version", CONFLICT, "Stale key version"),
     KeyVersionMismatch => ("key_version_mismatch", CONFLICT, "Key version mismatch"),
     EmailTaken => ("email_taken", CONFLICT, "E-mail already registered"),

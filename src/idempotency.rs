@@ -106,9 +106,16 @@ pub async fn lookup(
 }
 
 /// Whether an error from inside the transaction is a final answer that is
-/// stored; server errors are not.
+/// stored; server errors are not, nor answers that only hold for now: a
+/// rate limit checked inside the handler, and an open rotation that is to
+/// remove the caller. A repetition with the same key must be able to
+/// succeed once they are over.
 pub fn storable(error: &ApiError) -> bool {
     !error.code().status().is_server_error()
+        && !matches!(
+            error.code(),
+            ErrorCode::RateLimited | ErrorCode::RotationInProgress
+        )
 }
 
 /// Ends the savepoint around the work of a request: kept on success, rolled
@@ -172,4 +179,18 @@ pub async fn store(
         Ok((status, body)) => (status, Json(body)).into_response(),
         Err(error) => error.into_response(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn passing_answers_are_not_stored() {
+        assert!(!storable(&ApiError::new(ErrorCode::RateLimited)));
+        assert!(!storable(&ApiError::new(ErrorCode::RotationInProgress)));
+        assert!(!storable(&ApiError::new(ErrorCode::InternalError)));
+        assert!(storable(&ApiError::new(ErrorCode::Conflict)));
+        assert!(storable(&ApiError::new(ErrorCode::ValidationFailed)));
+    }
 }

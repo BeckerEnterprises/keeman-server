@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO rotations (id, vault_id, base_revision, new_key_version, created_by, expires_at,\n                                remove_user_ids)\n         VALUES (?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "83db0534bdf2e92c4c6bc575ca7d9a6e7e17920c3297d9880effd9245f465894"
+}

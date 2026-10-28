@@ -420,7 +420,7 @@ async fn sharing_notifies_the_affected_accounts() {
             Req::post(&format!("/v1/vaults/{vault_id}/rotations"))
                 .token(&alice.access_token)
                 .idem(&new_uuid())
-                .json(&json!({ "base_revision": 1, "new_key_version": 2 })),
+                .json(&json!({ "base_revision": 1, "new_key_version": 2, "remove_user_ids": [bob.user_id] })),
         )
         .await
         .json();

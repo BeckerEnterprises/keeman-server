@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT 1 AS \"one!: i64\" FROM rotations r\n           WHERE r.vault_id = ? AND r.expires_at > ?\n             AND EXISTS (SELECT 1 FROM json_each(r.remove_user_ids) WHERE value = ?)",
+  "describe": {
+    "columns": [
+      {
+        "name": "one!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4cc290b9c9c9201812646d6647bc1401fda833073fd024b8f97d0991c87f24c0"
+}
