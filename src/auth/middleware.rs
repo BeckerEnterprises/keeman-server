@@ -75,7 +75,7 @@ async fn prepare(app: &App, request: &mut Request) -> ApiResult<()> {
     let own_limit = matches!(
         path.as_str(),
         "/v1/me/reauth" | "/v1/users/lookup" | "/v1/favicon"
-    ) || (*request.method() == Method::PUT && path == "/v1/me/pairing");
+    ) || (*request.method() == Method::POST && path == "/v1/me/confirmations");
     if !own_limit {
         // Per session and per account at once: new sessions do not raise the limit.
         let limits = &app.config.rate_limits;

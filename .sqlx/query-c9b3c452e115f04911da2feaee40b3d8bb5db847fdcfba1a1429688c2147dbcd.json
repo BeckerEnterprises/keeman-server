@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO confirmations (id, user_id, session_id, nonce, created_at, expires_at)\n         VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "c9b3c452e115f04911da2feaee40b3d8bb5db847fdcfba1a1429688c2147dbcd"
+}

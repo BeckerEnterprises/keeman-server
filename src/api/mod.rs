@@ -2,13 +2,13 @@
 
 pub mod attachments;
 pub mod auth;
+pub mod confirmations;
 pub mod favicon;
 pub mod freshness;
 pub mod me;
 pub mod members;
 pub mod meta;
 pub mod objects;
-pub mod pairing;
 pub mod passkeys;
 pub mod recovery;
 pub mod roles;

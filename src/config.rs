@@ -201,8 +201,12 @@ pub struct RateLimitsSection {
     pub account_per_min: u32,
     pub lookup_per_account_per_hour: u32,
     pub favicon_per_account_per_min: u32,
-    /// Storing a pairing; not counted against the session and account limits.
-    pub pairings_per_account_per_hour: u32,
+    /// Confirmation requests; not counted against the session and account
+    /// limits.
+    pub confirmations_per_account_per_hour: u32,
+    /// The limit of the removed pairing by code. `init` wrote it into new
+    /// configurations, so it is still accepted, logged and ignored.
+    pub pairings_per_account_per_hour: Option<u32>,
     /// Invitations, on top of the session and account limits.
     pub invites_per_account_per_hour: u32,
     pub invites_per_invitee_per_hour: u32,
@@ -223,7 +227,8 @@ impl Default for RateLimitsSection {
             account_per_min: 1200,
             lookup_per_account_per_hour: 30,
             favicon_per_account_per_min: 30,
-            pairings_per_account_per_hour: 20,
+            confirmations_per_account_per_hour: 20,
+            pairings_per_account_per_hour: None,
             invites_per_account_per_hour: 30,
             invites_per_invitee_per_hour: 30,
         }
@@ -354,7 +359,7 @@ impl Config {
             r.account_per_min,
             r.lookup_per_account_per_hour,
             r.favicon_per_account_per_min,
-            r.pairings_per_account_per_hour,
+            r.confirmations_per_account_per_hour,
             r.invites_per_account_per_hour,
             r.invites_per_invitee_per_hour,
         ]

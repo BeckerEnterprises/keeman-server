@@ -235,27 +235,30 @@ impl<'de> Deserialize<'de> for FreshnessBytes {
     }
 }
 
-/// Pairing data: AEAD envelope of at most 1 MiB as text (`413` above),
-/// format byte `0x01`, at least 41 bytes.
+/// Statement bytes of a confirmation answer as canonical Base64url of at
+/// most 1 MiB decoded (`413` above); the content is read by `confirmation`.
 #[derive(Debug, Clone)]
-pub struct PairingEnvelope(pub Vec<u8>);
+pub struct ConfirmationBytes(pub Vec<u8>);
 
-pub const PAIRING_MAX_CHARS: usize = 1_048_576;
+/// 1 MiB as Base64url without padding.
+pub const CONFIRMATION_MAX_CHARS: usize = 1_398_102;
 
-impl<'de> Deserialize<'de> for PairingEnvelope {
+impl<'de> Deserialize<'de> for ConfirmationBytes {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         deserialize_str(deserializer, |s| {
-            if s.len() > PAIRING_MAX_CHARS {
+            if s.len() > CONFIRMATION_MAX_CHARS {
                 return Err(TOO_LARGE);
             }
-            match decode_base64url(s) {
-                Some(bytes) if bytes.len() >= 41 && bytes[0] == 0x01 => Ok(Self(bytes)),
-                Some(_) => Err(MSG_ENVELOPE),
-                None => Err(MSG_BASE64),
+            if s.is_empty() {
+                return Err(MSG_BASE64);
             }
+            decode_base64url(s).map(Self).ok_or(MSG_BASE64)
         })
     }
 }
+
+/// Nonce of a confirmation request: 32 random bytes of the requesting device.
+pub type Nonce = B64<32>;
 
 /// Role of a member.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]

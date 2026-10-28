@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM confirmations WHERE session_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "4b9bb49df741431ab3c7ffd0f5c1de7b8b18a9ee5ec87e881d6f1e88490efc2c"
+}

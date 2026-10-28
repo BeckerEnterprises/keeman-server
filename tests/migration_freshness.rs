@@ -63,7 +63,7 @@ async fn new_rows_go_with_their_account_and_vault() {
     .await
     .unwrap();
 
-    MIGRATOR.run(&pool).await.unwrap();
+    MIGRATOR.run_to(7, &pool).await.unwrap();
     assert_eq!(count(&pool, "users").await, 2);
     assert_eq!(count(&pool, "vault_freshness").await, 0);
     for statement in [

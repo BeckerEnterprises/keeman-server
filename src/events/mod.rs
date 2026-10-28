@@ -18,3 +18,7 @@ pub fn vaults_changed() -> Value {
 pub fn user_data_changed(revision: i64) -> Value {
     json!({ "type": "user_data_changed", "revision": revision })
 }
+
+pub fn confirmations_changed() -> Value {
+    json!({ "type": "confirmations_changed" })
+}

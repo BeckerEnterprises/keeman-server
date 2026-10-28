@@ -12,6 +12,11 @@ use crate::{jobs, logging};
 pub async fn serve(loaded: Loaded) -> CliResult<()> {
     let Loaded { config, secret } = loaded;
     logging::init(&config.logging);
+    if config.rate_limits.pairings_per_account_per_hour.is_some() {
+        tracing::warn!(
+            "rate_limits.pairings_per_account_per_hour is no longer used and can be removed"
+        );
+    }
     let listen: SocketAddr = config
         .server
         .listen

@@ -89,7 +89,7 @@ session_per_min = 600
 account_per_min = 1200                 # all sessions of an account together
 lookup_per_account_per_hour = 30       # users/lookup, not counted against the session and account limits
 favicon_per_account_per_min = 30       # favicon, not counted against the session and account limits
-pairings_per_account_per_hour = 20     # storing a pairing, not counted against the session and account limits
+confirmations_per_account_per_hour = 20  # confirmation requests, not counted against the session and account limits
 invites_per_account_per_hour = 30      # invitations sent, on top of the session and account limits
 invites_per_invitee_per_hour = 30      # invitations received by one account
 

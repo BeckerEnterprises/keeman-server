@@ -214,10 +214,14 @@ pub fn router(app: Arc<App>) -> Router {
         .route("/v1/me/signing-key", put(api::me::put_signing_key))
         .route("/v1/me/freshness", put(api::freshness::put_user_data))
         .route(
-            "/v1/me/pairing",
-            put(api::pairing::put)
-                .get(api::pairing::get)
-                .delete(api::pairing::delete),
+            "/v1/me/confirmations",
+            post(api::confirmations::create).get(api::confirmations::list),
+        )
+        .route(
+            "/v1/me/confirmations/{request_id}",
+            get(api::confirmations::get)
+                .put(api::confirmations::answer)
+                .delete(api::confirmations::delete),
         )
         .route("/v1/me/totp/setup", post(api::two_factor::totp_setup))
         .route("/v1/me/totp/enable", post(api::two_factor::totp_enable))

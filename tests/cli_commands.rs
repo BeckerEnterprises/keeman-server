@@ -275,6 +275,17 @@ fn refuses_to_start_with_unsafe_configuration() {
             "rate_limits must all be positive",
         ),
         (
+            "no confirmation requests per account",
+            Box::new(|d: &Path| {
+                replace(
+                    d,
+                    "confirmations_per_account_per_hour = 20",
+                    "confirmations_per_account_per_hour = 0",
+                )
+            }),
+            "rate_limits must all be positive",
+        ),
+        (
             "too few idempotency entries",
             Box::new(|d: &Path| {
                 replace(

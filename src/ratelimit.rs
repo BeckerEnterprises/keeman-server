@@ -24,8 +24,8 @@ pub enum Bucket {
     Account,
     Lookup,
     Favicon,
-    /// Pairings stored by an account.
-    Pairing,
+    /// Confirmation requests made by an account.
+    Confirmation,
     /// Invitations sent by an account and received by an account.
     InvitesByAccount,
     InvitesByInvitee,

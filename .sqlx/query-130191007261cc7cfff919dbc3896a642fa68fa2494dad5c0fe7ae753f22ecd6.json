@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE confirmations SET answer_statement = ?, answer_signature = ?\n         WHERE id = ? AND answer_statement IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "130191007261cc7cfff919dbc3896a642fa68fa2494dad5c0fe7ae753f22ecd6"
+}

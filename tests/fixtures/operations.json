@@ -110,18 +110,28 @@
     "access": "token"
   },
   {
-    "method": "PUT",
-    "path": "/v1/me/pairing",
+    "method": "POST",
+    "path": "/v1/me/confirmations",
     "access": "token"
   },
   {
     "method": "GET",
-    "path": "/v1/me/pairing",
+    "path": "/v1/me/confirmations",
+    "access": "token"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/confirmations/{request_id}",
+    "access": "token"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/me/confirmations/{request_id}",
     "access": "token"
   },
   {
     "method": "DELETE",
-    "path": "/v1/me/pairing",
+    "path": "/v1/me/confirmations/{request_id}",
     "access": "token"
   },
   {

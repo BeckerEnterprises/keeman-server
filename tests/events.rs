@@ -462,6 +462,77 @@ async fn sharing_notifies_the_affected_accounts() {
 }
 
 #[tokio::test]
+async fn confirmations_notify_every_session_of_the_account_only() {
+    let (t, addr) = serve("").await;
+    let alice = t.register("alice@example.com").await;
+    let other = t.login(&alice).await;
+    let bob = t.register("bob@example.com").await;
+    let mut mine = ready(addr, &alice).await;
+    let mut theirs = ready(addr, &other).await;
+    let mut b = ready(addr, &bob).await;
+    let changed = json!({ "type": "confirmations_changed" });
+
+    let nonce = support::b64([1u8; 32]);
+    let created = t
+        .call(
+            Req::post("/v1/me/confirmations")
+                .token(&alice.access_token)
+                .json(&json!({ "nonce": nonce })),
+        )
+        .await;
+    assert_eq!(created.status, StatusCode::CREATED);
+    let id = created.json()["request_id"].as_str().unwrap().to_string();
+    assert_eq!(next_text(&mut mine).await, changed);
+    assert_eq!(next_text(&mut theirs).await, changed);
+
+    let statement = keeman_server::confirmation::Statement {
+        user_id: alice.user_id.clone(),
+        nonce: [1; 32],
+        time: "2026-10-28T08:42:00.000Z".into(),
+        content: b"{}".to_vec(),
+    };
+    let answer = support::freshness::sign_in(
+        &other,
+        "keeman:v1:device-confirmation",
+        &keeman_server::confirmation::encode(&statement),
+    );
+    let answered = t
+        .call(
+            Req::put(&format!("/v1/me/confirmations/{id}"))
+                .token(&other.access_token)
+                .json(&json!({ "answer": answer })),
+        )
+        .await;
+    assert_eq!(
+        answered.status,
+        StatusCode::NO_CONTENT,
+        "{}",
+        answered.text()
+    );
+    assert_eq!(next_text(&mut mine).await, changed);
+    assert_eq!(next_text(&mut theirs).await, changed);
+
+    let deleted = t
+        .call(Req::delete(&format!("/v1/me/confirmations/{id}")).token(&alice.access_token))
+        .await;
+    assert_eq!(deleted.status, StatusCode::NO_CONTENT);
+    assert_eq!(next_text(&mut mine).await, changed);
+
+    // Bob's connection heard none of it: his next message is his own.
+    let body = json!({ "expected_revision": 1, "data": support::envelope(297) });
+    t.call(
+        Req::put("/v1/me/user-data")
+            .token(&bob.access_token)
+            .json(&body),
+    )
+    .await;
+    assert_eq!(
+        next_text(&mut b).await,
+        json!({ "type": "user_data_changed", "revision": 2 })
+    );
+}
+
+#[tokio::test]
 async fn recovery_closes_the_connections_of_all_sessions() {
     let (t, addr) = serve("").await;
     let alice = t.register("alice@example.com").await;
