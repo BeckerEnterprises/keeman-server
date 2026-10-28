@@ -1,12 +1,13 @@
 //! The shared test vectors that apply to the server: strict Base64url, UUID
 //! format, the KDF parameter range, TOTP, the fixed manifest IDs, signatures,
-//! the statements of the roles chain and freshness attestations. Clients
-//! pass the same vectors.
+//! the statements of the roles chain, freshness attestations and answers to
+//! a confirmation request. Clients pass the same vectors.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use blake2::digest::consts::U32;
 use blake2::digest::{Digest, Mac};
 use blake2::{Blake2b, Blake2bMac};
+use keeman_server::confirmation;
 use keeman_server::extract::parse_json;
 use keeman_server::freshness;
 use keeman_server::manifest_ids::{SHARDS, root_id, shard_id};
@@ -444,4 +445,106 @@ fn freshness_vectors() {
         checked += 1;
     }
     assert_eq!(checked, 36);
+}
+
+/// An answer statement in the field names of the API.
+fn confirmation_of(wire: &Value) -> confirmation::Statement {
+    confirmation::Statement {
+        user_id: wire["user_id"].as_str().unwrap().into(),
+        nonce: key32(&wire["nonce"]),
+        time: wire["time"].as_str().unwrap().into(),
+        content: decode_base64url(wire["content"].as_str().unwrap()).unwrap(),
+    }
+}
+
+/// What the server makes of an answer up to account and nonce: `None` when
+/// it would refuse it. The content only clients read.
+fn read_answer(
+    answer: &Value,
+    public_key: &[u8],
+    user_id: &str,
+    nonce: &str,
+) -> Option<confirmation::Statement> {
+    let bytes = decode_base64url(answer["statement"].as_str()?)?;
+    let signature: [u8; 64] = decode_base64url(answer["signature"].as_str()?)?
+        .try_into()
+        .ok()?;
+    let key: [u8; 32] = public_key.try_into().ok()?;
+    let statement = confirmation::parse(&bytes)?;
+    let fits = statement.user_id == user_id && decode_base64url(nonce)? == statement.nonce;
+    (fits && confirmation::verify(&key, &bytes, &signature)).then_some(statement)
+}
+
+#[test]
+fn confirmation_vectors() {
+    let mut checked = 0;
+    for case in cases("confirmation.json") {
+        let id = case["id"].as_str().unwrap();
+        let expected = &case["expected"];
+        match case["kind"].as_str().unwrap() {
+            "statement" => {
+                let statement = confirmation::Statement {
+                    user_id: case["user_id"].as_str().unwrap().into(),
+                    nonce: key32(&case["nonce"]),
+                    time: case["time"].as_str().unwrap().into(),
+                    content: unhex(case["content_utf8_hex"].as_str().unwrap()),
+                };
+                let bytes = confirmation::encode(&statement);
+                assert_eq!(
+                    keeman_server::types::encode_base64url(&bytes),
+                    expected["statement"],
+                    "{id}"
+                );
+                assert_eq!(confirmation::parse(&bytes), Some(statement.clone()), "{id}");
+                assert_eq!(confirmation_of(&expected["decoded"]), statement, "{id}");
+                let seed = signing_seed(case["signer_user_key_hex"].as_str().unwrap());
+                let pair = Ed25519KeyPair::from_seed_unchecked(&seed).unwrap();
+                let mut signed = confirmation::SIGNATURE_CONTEXT.as_bytes().to_vec();
+                signed.push(0);
+                signed.extend_from_slice(&bytes);
+                assert_eq!(
+                    keeman_server::types::encode_base64url(pair.sign(&signed).as_ref()),
+                    expected["signature"],
+                    "{id}"
+                );
+                let signature: [u8; 64] = decode_base64url(expected["signature"].as_str().unwrap())
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                let key: [u8; 32] = pair.public_key().as_ref().try_into().unwrap();
+                assert!(confirmation::verify(&key, &bytes, &signature), "{id}");
+                assert!(!freshness::verify(&key, &bytes, &signature), "{id}");
+                assert!(!roles::verify(&key, &bytes, &signature), "{id}");
+            }
+            "decode" => {
+                let bytes = decode_base64url(case["statement_b64"].as_str().unwrap()).unwrap();
+                let parsed = confirmation::parse(&bytes);
+                match expected.get("statement") {
+                    Some(wire) => assert_eq!(parsed, Some(confirmation_of(wire)), "{id}"),
+                    None => assert_eq!(parsed, None, "{id}"),
+                }
+            }
+            "verify" => {
+                let read = read_answer(
+                    &case["answer"],
+                    &unhex(case["public_key_hex"].as_str().unwrap()),
+                    case["expected_user_id"].as_str().unwrap(),
+                    case["expected_nonce"].as_str().unwrap(),
+                );
+                match expected.get("time") {
+                    Some(time) => assert_eq!(
+                        read.map(|s| s.time),
+                        time.as_str().map(str::to_string),
+                        "{id}"
+                    ),
+                    None => assert_eq!(read, None, "{id}"),
+                }
+            }
+            // The content only clients read.
+            "content" => continue,
+            other => panic!("{id}: unknown kind {other}"),
+        }
+        checked += 1;
+    }
+    assert_eq!(checked, 31);
 }
