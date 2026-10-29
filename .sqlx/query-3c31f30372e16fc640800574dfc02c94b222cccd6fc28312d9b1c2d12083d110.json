@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE backup_codes SET used_at = ?\n         WHERE id = ? AND user_id = ? AND code_hash = ? AND used_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "3c31f30372e16fc640800574dfc02c94b222cccd6fc28312d9b1c2d12083d110"
+}

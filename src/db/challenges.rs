@@ -169,6 +169,23 @@ pub async fn set_state<'e>(
     Ok(())
 }
 
+/// Consumes a challenge that has not expired; returns whether it was still
+/// there.
+pub async fn consume<'e>(
+    ex: impl SqliteExecutor<'e>,
+    hash: &[u8],
+    now: &str,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query!(
+        "DELETE FROM challenges WHERE token_hash = ? AND expires_at > ?",
+        hash,
+        now
+    )
+    .execute(ex)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
 /// Consumes a challenge; returns whether it still existed.
 pub async fn delete<'e>(ex: impl SqliteExecutor<'e>, hash: &[u8]) -> Result<bool, sqlx::Error> {
     let result = sqlx::query!("DELETE FROM challenges WHERE token_hash = ?", hash)

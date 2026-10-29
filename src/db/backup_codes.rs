@@ -36,16 +36,22 @@ pub async fn unused<'e>(
 }
 
 /// Marks a code as used; returns whether it was still unused, so of two
-/// concurrent requests with the same code only one succeeds.
+/// concurrent requests with the same code only one succeeds. Row numbers
+/// are reused once codes are replaced, so the account and the hash that
+/// matched have to agree as well.
 pub async fn mark_used<'e>(
     ex: impl SqliteExecutor<'e>,
-    id: i64,
+    code: &UnusedCode,
+    user_id: &str,
     now: &str,
 ) -> Result<bool, sqlx::Error> {
     let result = sqlx::query!(
-        "UPDATE backup_codes SET used_at = ? WHERE id = ? AND used_at IS NULL",
+        "UPDATE backup_codes SET used_at = ?
+         WHERE id = ? AND user_id = ? AND code_hash = ? AND used_at IS NULL",
         now,
-        id
+        code.id,
+        user_id,
+        code.code_hash
     )
     .execute(ex)
     .await?;

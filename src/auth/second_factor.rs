@@ -256,13 +256,14 @@ pub async fn complete(
     ip_hint: &str,
     backup_codes_remaining: Option<i64>,
 ) -> ApiResult<(Response, Vec<String>)> {
-    // Gone if a concurrent request used it up, or if a password change,
-    // recovery or disabling the account deleted it after it was opened.
-    if !db::challenges::delete(&mut *tx, &pending.hash).await? {
+    // Gone if a concurrent request used it up, if a password change,
+    // recovery or disabling the account deleted it after it was opened, or
+    // if it expired while the factor was checked.
+    let now = app.now();
+    if !db::challenges::consume(&mut *tx, &pending.hash, &format_timestamp(now)).await? {
         return Err(ApiError::new(ErrorCode::ChallengeInvalid));
     }
     throttle::success(tx, app, &pending.throttle_key).await?;
-    let now = app.now();
     if pending.purpose == "recovery" {
         let response = recovery_payload(
             tx,

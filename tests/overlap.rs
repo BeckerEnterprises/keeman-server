@@ -263,3 +263,97 @@ async fn a_revoked_session_cannot_sign_out_the_others() {
         1
     );
 }
+
+fn second_factor(path: &str, challenge: &str, code: &str) -> Request<Body> {
+    Req::post(path)
+        .json(&json!({ "challenge_token": challenge, "code": code }))
+        .peer(&unique_ip())
+        .build()
+}
+
+#[tokio::test]
+async fn a_backup_code_overtaken_by_new_codes_fails() {
+    let t = test_app().await;
+    let alice = t.register("alice@example.com").await;
+    t.enable_totp_direct(&alice).await;
+    t.set_backup_codes(&alice, &["AAAAAAAAAA", "BBBBBBBBBB"])
+        .await;
+    let challenge = t.login_challenge(&alice).await;
+    let before = sessions(&t, &alice).await;
+    // New codes take over the freed row numbers of the old ones.
+    let hashes = t
+        .app
+        .passwords
+        .hash_all(vec![b"CCCCCCCCCC".to_vec(), b"DDDDDDDDDD".to_vec()])
+        .await
+        .unwrap();
+    let mut tx = t.app.db.begin().await.unwrap();
+    let pending = t.spawn(second_factor(
+        "/v1/auth/2fa/backup-code",
+        &challenge,
+        "AAAAAAAAAA",
+    ));
+    t.writers_waiting(1).await;
+    keeman_server::db::backup_codes::replace(&mut tx, &alice.user_id, &hashes)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let response = pending.await.unwrap();
+    assert_eq!(response.code(), "invalid_second_factor");
+    assert_eq!(sessions(&t, &alice).await, before);
+    assert_eq!(
+        t.count("SELECT COUNT(*) FROM backup_codes WHERE used_at IS NULL")
+            .await,
+        2
+    );
+}
+
+#[tokio::test]
+async fn a_totp_code_overtaken_by_a_new_secret_fails() {
+    let t = test_app().await;
+    let alice = t.register("alice@example.com").await;
+    let secret = t.enable_totp_direct(&alice).await;
+    let challenge = t.login_challenge(&alice).await;
+    let before = sessions(&t, &alice).await;
+    let mut tx = t.app.db.begin().await.unwrap();
+    let pending = t.spawn(second_factor(
+        "/v1/auth/2fa/totp",
+        &challenge,
+        &t.totp(&secret, 0),
+    ));
+    t.writers_waiting(1).await;
+    t.enable_totp_in(&mut tx, &alice).await;
+    tx.commit().await.unwrap();
+    let response = pending.await.unwrap();
+    assert_eq!(response.code(), "invalid_second_factor");
+    assert_eq!(sessions(&t, &alice).await, before);
+    assert_eq!(
+        t.count(&format!(
+            "SELECT totp_last_step FROM users WHERE id = '{}'",
+            alice.user_id
+        ))
+        .await,
+        0
+    );
+}
+
+#[tokio::test]
+async fn a_second_factor_overtaken_by_the_expiry_fails() {
+    let t = test_app().await;
+    let alice = t.register("alice@example.com").await;
+    let secret = t.enable_totp_direct(&alice).await;
+    let challenge = t.login_challenge(&alice).await;
+    let before = sessions(&t, &alice).await;
+    let tx = t.app.db.begin().await.unwrap();
+    let pending = t.spawn(second_factor(
+        "/v1/auth/2fa/totp",
+        &challenge,
+        &t.totp(&secret, 0),
+    ));
+    t.writers_waiting(1).await;
+    t.advance(time::Duration::seconds(301));
+    tx.commit().await.unwrap();
+    let response = pending.await.unwrap();
+    assert_eq!(response.code(), "challenge_invalid");
+    assert_eq!(sessions(&t, &alice).await, before);
+}

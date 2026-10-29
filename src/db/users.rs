@@ -271,17 +271,21 @@ pub async fn disable_totp<'e>(
 }
 
 /// Stores the step of an accepted code only if it is newer than the last
-/// one, so each code works once; returns whether it was stored.
+/// one and the secret is still the one the code was checked against, so
+/// each code works once; returns whether it was stored.
 pub async fn advance_totp_step<'e>(
     ex: impl SqliteExecutor<'e>,
     id: &str,
+    secret_enc: &[u8],
     step: i64,
 ) -> Result<bool, sqlx::Error> {
     let result = sqlx::query!(
         "UPDATE users SET totp_last_step = ?
-         WHERE id = ? AND totp_enabled = 1 AND (totp_last_step IS NULL OR totp_last_step < ?)",
+         WHERE id = ? AND totp_enabled = 1 AND totp_secret_enc = ?
+           AND (totp_last_step IS NULL OR totp_last_step < ?)",
         step,
         id,
+        secret_enc,
         step
     )
     .execute(ex)

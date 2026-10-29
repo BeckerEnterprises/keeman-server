@@ -46,15 +46,16 @@ pub async fn totp(
     let body: TotpBody = json(request).await?;
     let pending = second_factor::open(&app, &body.challenge_token, true).await?;
     let hint = ip.hint();
-    let Some(step) = check_totp(&app, &pending, &body.code.0).await? else {
+    let Some((step, sealed)) = check_totp(&app, &pending, &body.code.0).await? else {
         return Err(second_factor::fail(&app, &pending, "totp", &hint).await);
     };
     if pending.disabled {
         return Err(second_factor::disabled(&app, &pending, &hint).await);
     }
     let mut tx = app.db.begin().await?;
-    // Stored conditionally: of two requests with the same code only one wins.
-    if !db::users::advance_totp_step(&mut *tx, &pending.user_id, step).await? {
+    // Stored conditionally: of two requests with the same code only one wins,
+    // and a secret replaced since the check no longer counts.
+    if !db::users::advance_totp_step(&mut *tx, &pending.user_id, &sealed, step).await? {
         drop(tx);
         return Err(second_factor::fail(&app, &pending, "totp", &hint).await);
     }
@@ -65,9 +66,9 @@ pub async fn totp(
     Ok(response)
 }
 
-/// The accepted time step of a code, or `None`; an account
-/// without active TOTP never matches.
-async fn check_totp(app: &App, pending: &Pending, code: &str) -> ApiResult<Option<i64>> {
+/// The accepted time step of a code with the sealed secret it was checked
+/// against, or `None`; an account without active TOTP never matches.
+async fn check_totp(app: &App, pending: &Pending, code: &str) -> ApiResult<Option<(i64, Vec<u8>)>> {
     let Some(state) = db::users::totp_state(&app.db.read, &pending.user_id).await? else {
         return Ok(None);
     };
@@ -78,12 +79,10 @@ async fn check_totp(app: &App, pending: &Pending, code: &str) -> ApiResult<Optio
         .keys
         .open_totp_secret(&pending.user_id, &sealed)
         .map_err(ApiError::internal)?;
-    Ok(totp::verify(
-        &secret,
-        code,
-        app.now().unix_timestamp(),
-        state.last_step,
-    ))
+    Ok(
+        totp::verify(&secret, code, app.now().unix_timestamp(), state.last_step)
+            .map(|step| (step, sealed)),
+    )
 }
 
 #[derive(Deserialize)]
@@ -104,10 +103,9 @@ pub async fn backup_code(
     let pending = second_factor::open(&app, &body.challenge_token, true).await?;
     let hint = ip.hint();
     let unused = db::backup_codes::unused(&app.db.read, &pending.user_id).await?;
-    let ids: Vec<i64> = unused.iter().map(|c| c.id).collect();
-    let hashes = unused.into_iter().map(|c| c.code_hash).collect();
+    let hashes = unused.iter().map(|c| c.code_hash.clone()).collect();
     let found = app.passwords.find(body.code.0.as_bytes(), hashes).await?;
-    let Some(id) = found.and_then(|index| ids.get(index).copied()) else {
+    let Some(code) = found.and_then(|index| unused.get(index)) else {
         return Err(second_factor::fail(&app, &pending, "backup_code", &hint).await);
     };
     if pending.disabled {
@@ -115,7 +113,7 @@ pub async fn backup_code(
     }
     let now_text = format_timestamp(app.now());
     let mut tx = app.db.begin().await?;
-    if !db::backup_codes::mark_used(&mut *tx, id, &now_text).await? {
+    if !db::backup_codes::mark_used(&mut *tx, code, &pending.user_id, &now_text).await? {
         drop(tx);
         return Err(second_factor::fail(&app, &pending, "backup_code", &hint).await);
     }
